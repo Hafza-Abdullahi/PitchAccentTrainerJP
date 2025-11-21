@@ -1,2 +1,0 @@
-C:/Users/Hafza/Desktop/git/Sem2_Y3_Project/App/myapp/android/app/.cxx/RelWithDebInfo/4j486d4e/armeabi-v7a/CMakeFiles/edit_cache.dir
-C:/Users/Hafza/Desktop/git/Sem2_Y3_Project/App/myapp/android/app/.cxx/RelWithDebInfo/4j486d4e/armeabi-v7a/CMakeFiles/rebuild_cache.dir
