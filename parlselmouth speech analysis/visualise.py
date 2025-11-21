@@ -16,7 +16,19 @@ import matplotlib
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
 
-matplotlib.use('Qt5Agg')
+#flask and cors, send_file for images
+from flask import Flask, request, send_file, jsonify
+from flask_cors import CORS
+
+#io for saving file in RAM
+import io
+import os
+import tempfile
+
+matplotlib.use('Agg')  #disable qt5gg for the server
+
+app = Flask(__name__)
+CORS(app)
 
 def moving_average(data, window_size):
     return np.convolve(data, np.ones(window_size)/window_size, mode='same')
@@ -53,7 +65,47 @@ def showPitchOnGraph(*audio_files):
     plt.title("Pitch Contour Comparison")
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.show()
 
-# Example usage:
-showPitchOnGraph("nativeSpeaker_iru.mp3", "hafza_iru.mp3")
+
+#flask app 
+
+@app.route("/process-audio", methods=["POST"])
+def process_audio():
+    """
+    Accepts audio files from Flutter.
+    Runs showPitchOnGraph() using your code.
+    Returns the generated pitch graph as a PNG image.
+    """
+
+    if "files" not in request.files:
+        return jsonify({"error": "No audio files uploaded"}), 400
+
+    files = request.files.getlist("files")
+
+    # Save all uploaded audio files to temp directory
+    #
+    temp_files = []
+    for f in files:
+        temp_path = os.path.join(tempfile.gettempdir(), f.filename)
+        f.save(temp_path)
+        temp_files.append(temp_path)
+
+    # Run your original function
+    showPitchOnGraph(*temp_files)
+
+    #save plot to png instead og displaying gui
+    img_buffer = io.BytesIO()
+    plt.savefig(img_buffer, format="png", dpi=150)
+    img_buffer.seek(0)
+
+    #clear the figure 
+    plt.close()
+
+    #return img
+    return send_file(img_buffer, mimetype="image/png")
+
+
+#running the server 
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
