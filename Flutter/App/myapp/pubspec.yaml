@@ -38,12 +38,12 @@ dependencies:
   google_fonts: ^6.2.1
   iconsax: ^0.0.8
   url_launcher: ^6.3.1
-  firebase_core: ^3.12.1
-  firebase_auth: ^5.5.1
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
   get_storage: ^2.1.1
-  google_sign_in: ^6.3.0
-  cloud_firestore: ^5.6.6
-  csv: ^5.0.0
+  google_sign_in: ^7.2.0
+  cloud_firestore: ^6.1.0
+  csv: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -54,7 +54,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

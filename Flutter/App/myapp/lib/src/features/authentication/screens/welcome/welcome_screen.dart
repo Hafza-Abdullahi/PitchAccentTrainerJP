@@ -81,8 +81,7 @@ class WelcomeScreen extends StatelessWidget {
               onPressed: () {
                 //go to homescreen
                 Get.to(() => const HomeScreen());// Navigate to NavigationMenu
-                myGlobal_isNormalUser = null; //user is a guest
-                myGlobal_AccountType = "Guest";
+
               },
               child: Text("Continue Without Logging In".toUpperCase()), // Change text to your needs
             ),
