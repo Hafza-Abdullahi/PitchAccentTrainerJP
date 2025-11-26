@@ -45,23 +45,23 @@ class AuthenticationRepository extends GetxController {
 //returns user creds
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      //google sign in
-      final GoogleSignInAccount? userAccount = await GoogleSignIn()
-          .signIn(); //await google sing in
+      // Create Google sign-in instance
+      final GoogleSignIn googleSignIn = GoogleSignIn();
 
-      //get Oauth details, Oauth is a secure auth protocol that uses third party services
-      //aka google, to let users sign in, redirect the user to google login, grant perisiion to share email/info
-      //sends a secure token to this app to finalise and confirm user details
-      final GoogleSignInAuthentication? googleAuth = await userAccount
-          ?.authentication;
+      // Show Google popup
+      final GoogleSignInAccount? userAccount = await googleSignIn.signIn();
+      if (userAccount == null) return null; // user cancelled
 
-      //firebase new credential
-      final credentials = GoogleAuthProvider.credential(
-          accessToken: googleAuth?.accessToken,
-          idToken: googleAuth?.idToken
+      // Get Google authentication
+      final GoogleSignInAuthentication googleAuth = await userAccount.authentication;
+
+      // Create Firebase credential
+      final OAuthCredential credentials = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+        accessToken: googleAuth.accessToken,
       );
 
-      //pass credentials and return using await func
+      // Sign in to Firebase with the credential
       return await _auth.signInWithCredential(credentials);
 
     } on FirebaseAuthException catch (e) {
@@ -71,8 +71,9 @@ class AuthenticationRepository extends GetxController {
       const ex = LoginWithEmailAndPasswordFailure();
       throw ex.message;
     }
-    return null;
   }
+
+
 
 
 }
