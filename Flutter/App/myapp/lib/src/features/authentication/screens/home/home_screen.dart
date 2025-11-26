@@ -20,7 +20,7 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: tDefaultSize),
 
-              /// WORD AREA
+              ///WORD AREA
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(tCardPadding),
@@ -30,7 +30,7 @@ class HomeScreen extends StatelessWidget {
                   boxShadow: [TshadowStyle.shopCardViewShadow],
                 ),
                 child: const Text(
-                  "Word goes here",
+                  "Sample word",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: tWordTextSize,
@@ -42,7 +42,7 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: tHomeVerticalSpacing),
 
-              /// MEANING AREA
+              ///MEANING AREA
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(tCardPadding),
@@ -52,7 +52,7 @@ class HomeScreen extends StatelessWidget {
                   boxShadow: [TshadowStyle.shopCardViewShadow],
                 ),
                 child: const Text(
-                  "Meaning goes here",
+                  "Sample meaning",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: tMeaningTextSize,
@@ -63,7 +63,7 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: tHomeVerticalSpacing),
 
-              /// IMAGE AREA
+              ///IMAGE AREA
               Container(
                 height: tImageHeight,
                 width: double.infinity,
