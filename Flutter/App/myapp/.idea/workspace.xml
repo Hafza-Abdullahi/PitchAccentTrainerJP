@@ -5,30 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="a1f8c252-4d2a-476e-a811-a48de69ee698" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/lib/src/features/authentication/controllers/login_controller.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/lib/src/features/authentication/exceptions/form_validator.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/lib/src/features/authentication/exceptions/login_email_password_failure.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.idea/libraries/Dart_Packages.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../.idea/libraries/Dart_Packages.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.firebase/hosting.YnVpbGRcd2Vi.cache" beforeDir="false" afterPath="$PROJECT_DIR$/.firebase/hosting.YnVpbGRcd2Vi.cache" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/.cxx/Debug/1y5op2z3/arm64-v8a/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/.cxx/Debug/1y5op2z3/arm64-v8a/configure_fingerprint.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/.cxx/Debug/1y5op2z3/armeabi-v7a/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/.cxx/Debug/1y5op2z3/armeabi-v7a/configure_fingerprint.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/.cxx/Debug/1y5op2z3/x86/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/.cxx/Debug/1y5op2z3/x86/configure_fingerprint.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/.cxx/Debug/1y5op2z3/x86_64/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/.cxx/Debug/1y5op2z3/x86_64/configure_fingerprint.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/.cxx/RelWithDebInfo/6n302o3e/arm64-v8a/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/.cxx/RelWithDebInfo/6n302o3e/arm64-v8a/configure_fingerprint.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/.cxx/RelWithDebInfo/6n302o3e/armeabi-v7a/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/.cxx/RelWithDebInfo/6n302o3e/armeabi-v7a/configure_fingerprint.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/.cxx/RelWithDebInfo/6n302o3e/x86/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/.cxx/RelWithDebInfo/6n302o3e/x86/configure_fingerprint.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/android/app/.cxx/RelWithDebInfo/6n302o3e/x86_64/configure_fingerprint.bin" beforeDir="false" afterPath="$PROJECT_DIR$/android/app/.cxx/RelWithDebInfo/6n302o3e/x86_64/configure_fingerprint.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/common_widgets/navigation_menu.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/common_widgets/navigation_menu.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/features/authentication/controllers/register_controller.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/features/authentication/controllers/register_controller.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/features/authentication/exceptions/signup_email_password_failure.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/features/authentication/exceptions/signup_email_password_failure.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/features/authentication/screens/account_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/features/authentication/screens/account_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/features/authentication/screens/login/Login_form_widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/features/authentication/screens/login/Login_form_widget.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/features/authentication/screens/register/register_form_widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/features/authentication/screens/register/register_form_widget.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/features/authentication/screens/welcome/welcome_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/features/authentication/screens/welcome/welcome_screen.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/main.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/repository/authentication_repository/authentication_repository.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/repository/authentication_repository/authentication_repository.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/pubspec.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pubspec.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.idea/caches/deviceStreaming.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.idea/shelf/Uncommitted_changes_before_rebase_[Changes]/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../.idea/vcs.xml" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -52,8 +32,20 @@
     </leaf>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../../.." />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "Hafza-Abdullahi"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Hafza-Abdullahi/PitchAccentTrainerJP",
+    "accountId": "be50cc41-dcb9-400e-9ba5-6939fab13ab6"
+  }
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 6
 }</component>
@@ -72,6 +64,7 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
     "RunOnceActivity.git.unshallow": "true",
@@ -80,8 +73,9 @@
     "cidr.known.project.marker": "true",
     "dart.analysis.tool.window.visible": "false",
     "git-widget-placeholder": "main",
+    "io.flutter.project.isFirstOpen": "true",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Users/Hafza/Desktop/git/Sem2_Y3_Project/App",
+    "last_opened_file_path": "C:/Users/Hafza/Desktop/Pitch Accent App/PitchAccentTrainerJP/Flutter/App/myapp",
     "show.migrate.to.gradle.popup": "false"
   }
 }]]></component>
