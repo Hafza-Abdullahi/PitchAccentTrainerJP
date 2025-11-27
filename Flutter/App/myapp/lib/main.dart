@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(  //get function returns app
         theme: ThemeData(   //auto theme, white
           colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color.fromARGB(255, 255, 255, 255)),
+              seedColor: const Color.fromARGB(255, 209, 30, 30)),
           useMaterial3: true,
         ),
         home: SplashScreen() //const CircularProgressIndicator(), //to keep logged in
