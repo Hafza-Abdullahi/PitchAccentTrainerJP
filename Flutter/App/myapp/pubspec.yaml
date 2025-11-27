@@ -47,6 +47,7 @@ dependencies:
   google_sign_in: 6.1.5
   cloud_firestore: ^6.1.0
   http: ^1.6.0
+  audioplayers: ^6.5.1
 
 
 dev_dependencies:
@@ -79,6 +80,8 @@ flutter:
     - assets/images/login_images/
     - assets/images/logo_images/
     - assets/images/common_images/
+    - assets/json/cards.json
+    - assets/audio/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

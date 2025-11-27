@@ -17,42 +17,46 @@ class LoginScreen extends StatelessWidget {
 
     var deviceHeight = MediaQuery.of(context).size.height;
     return SafeArea(
-        //keeps the img, text and widgets withing the screens safe area
+      //keeps the img, text and widgets withing the screens safe area
         child: Scaffold(
-      body: SingleChildScrollView(
-        //singlechild scrollable
-        child: Container(
-          padding: const EdgeInsets.all(tDefaultSize), //default padding size
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              //img and heading
+          // Center the content horizontally
+          body: Center(
+            // Constraint the width for web/tablet
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: SingleChildScrollView(
+                //singlechild scrollable
+                child: Container(
+                  padding: const EdgeInsets.all(tDefaultSize), //default padding size
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      //img and heading
 
-              FormHeaderWidget(image: tWelcomeScreenImg, title: tLoginTitle, subTitle: tWelcomeSubTitle, deviceHeight: deviceHeight),
+                      FormHeaderWidget(image: tWelcomeScreenImg, title: tLoginTitle, subTitle: tWelcomeSubTitle, deviceHeight: deviceHeight),
 
-              //footer
-              //footer
-              Column(
-                children: [
-                  const Text("OR"),
-                  SizedBox(
-                    width: double.infinity,
-                    height: tButtonHeight,
-                    child: OutlinedButton.icon(
-                      onPressed: () => controller.googleSignIn(),
-                      icon: const Image(image: AssetImage(tGoogleImg), width: 20.0,),
-                      label: const Text(tSignInWithGoogle),
-                    ), // OutlinedButton.icon
+                      //footer
+                      //footer
+                      Column(
+                        children: [
+                          const Text("OR"),
+                          SizedBox(
+                            width: double.infinity,
+                            height: tButtonHeight,
+                            child: OutlinedButton.icon(
+                              onPressed: () => controller.googleSignIn(),
+                              icon: const Image(image: AssetImage(tGoogleImg), width: 20.0,),
+                              label: const Text(tSignInWithGoogle),
+                            ), // OutlinedButton.icon
+                          ),
+                        ],
+                      )
+                    ],
                   ),
-                ],
-              )
-            ],
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
-    ));
+        ));
   }
 }
-
-
-
