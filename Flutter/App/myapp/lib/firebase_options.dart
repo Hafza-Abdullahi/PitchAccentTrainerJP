@@ -40,54 +40,49 @@ class DefaultFirebaseOptions {
     }
   }
 
+
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCwX_vEsxRVf-e5Pjgn5QZJXd_6V_A1g7w',
-    appId: '1:313027415898:web:1aa530b8da46e7ec386d63',
-    messagingSenderId: '313027415898',
-    projectId: 'digital-shopping-mall-app',
-    authDomain: 'digital-shopping-mall-app.firebaseapp.com',
-    storageBucket: 'digital-shopping-mall-app.firebasestorage.app',
-    measurementId: 'G-SM6LKMJ9L0',
+    apiKey: 'AIzaSyAy8gzvcUScu9hj4RaKwsKkp1rZpzy49q4',
+    appId: '1:1037643922770:web:02b8d8455d08f2a956ce8b',
+    messagingSenderId: '1037643922770',
+    projectId: 'pitchaccentapp',
+    authDomain: 'pitchaccentapp.firebaseapp.com',
+    storageBucket: 'pitchaccentapp.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDzyWhs0aB5SvZhNbHjdSjW_SiyHiJVoS0',
-    appId: '1:313027415898:android:d4da88f920e2df79386d63',
-    messagingSenderId: '313027415898',
-    projectId: 'digital-shopping-mall-app',
-    storageBucket: 'digital-shopping-mall-app.firebasestorage.app',
+    apiKey: 'AIzaSyDkQf2fUz-DqPO2AXIUAQV8bR5_C8SQj-I',
+    appId: '1:1037643922770:android:4d09703e09419a4456ce8b',
+    messagingSenderId: '1037643922770',
+    projectId: 'pitchaccentapp',
+    storageBucket: 'pitchaccentapp.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBtuh1T4J1aBvZyj0i935xrCX1s6s8dHcQ',
-    appId: '1:313027415898:ios:0b992323f25f2189386d63',
-    messagingSenderId: '313027415898',
-    projectId: 'digital-shopping-mall-app',
-    storageBucket: 'digital-shopping-mall-app.firebasestorage.app',
-    androidClientId: '313027415898-ue9bc38nggnkjd3k0n8gbcpu8eeclepb.apps.googleusercontent.com',
-    iosClientId: '313027415898-nkqd1bg52cpifujhl311ntiotki7jgqc.apps.googleusercontent.com',
+    apiKey: 'AIzaSyDYZtzexfssp-eJFkAku__CaxQ3kbxWAJ8',
+    appId: '1:1037643922770:ios:ed89880035172b7856ce8b',
+    messagingSenderId: '1037643922770',
+    projectId: 'pitchaccentapp',
+    storageBucket: 'pitchaccentapp.firebasestorage.app',
     iosBundleId: 'com.example.myapp',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBtuh1T4J1aBvZyj0i935xrCX1s6s8dHcQ',
-    appId: '1:313027415898:ios:0b992323f25f2189386d63',
-    messagingSenderId: '313027415898',
-    projectId: 'digital-shopping-mall-app',
-    storageBucket: 'digital-shopping-mall-app.firebasestorage.app',
-    androidClientId: '313027415898-ue9bc38nggnkjd3k0n8gbcpu8eeclepb.apps.googleusercontent.com',
-    iosClientId: '313027415898-nkqd1bg52cpifujhl311ntiotki7jgqc.apps.googleusercontent.com',
+    apiKey: 'AIzaSyDYZtzexfssp-eJFkAku__CaxQ3kbxWAJ8',
+    appId: '1:1037643922770:ios:ed89880035172b7856ce8b',
+    messagingSenderId: '1037643922770',
+    projectId: 'pitchaccentapp',
+    storageBucket: 'pitchaccentapp.firebasestorage.app',
     iosBundleId: 'com.example.myapp',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCwX_vEsxRVf-e5Pjgn5QZJXd_6V_A1g7w',
-    appId: '1:313027415898:web:20b5222372dceb0f386d63',
-    messagingSenderId: '313027415898',
-    projectId: 'digital-shopping-mall-app',
-    authDomain: 'digital-shopping-mall-app.firebaseapp.com',
-    storageBucket: 'digital-shopping-mall-app.firebasestorage.app',
-    measurementId: 'G-P1PPRKW1JB',
+    apiKey: 'AIzaSyAy8gzvcUScu9hj4RaKwsKkp1rZpzy49q4',
+    appId: '1:1037643922770:web:37a01f19632d228e56ce8b',
+    messagingSenderId: '1037643922770',
+    projectId: 'pitchaccentapp',
+    authDomain: 'pitchaccentapp.firebaseapp.com',
+    storageBucket: 'pitchaccentapp.firebasestorage.app',
   );
 
 }

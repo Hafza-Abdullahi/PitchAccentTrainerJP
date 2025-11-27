@@ -16,7 +16,7 @@ migrate_working_dir/
 *.iml
 *.ipr
 *.iws
-.idea/
+App/myapp/.idea/
 
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
@@ -43,3 +43,36 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Security and Local settings
+local.properties
+**/local.properties
+google-services.json
+key.properties
+
+# Native generated files
+android/.gradle
+android/app/build
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+
+# 1. Block Local/Secret settings
+**/key.properties
+**/google-services.json
+**/.env
+
+# 2. Block IDE Settings (IntelliJ, Android Studio, VS Code)
+**/.idea/
+**/*.iml
+**/*.iws
+**/*.ipr
+**/workspace.xml
+**/misc.xml
+**/.vscode/
+
+# 3. Block Build Files & Caches
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.gradle/

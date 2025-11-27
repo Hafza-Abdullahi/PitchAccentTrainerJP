@@ -5,9 +5,9 @@ const String tLogin = "Login";
 const String tRegister = "Register";
 
 /* -- Welcome Screen text */
-const String tWelcomeTitle = "Welcome to TAP 2 SHOP";
+const String tWelcomeTitle = "Japanese Pitch Accent Trainer";
 const String tWelcomeSubTitle =
-    "The go-to App for supporting your local school";
+    "Sample Intro welcome message";
 
 /*---- Login Screen Text ----- */
 const String tLoginTitle = "Welcome Back!";
