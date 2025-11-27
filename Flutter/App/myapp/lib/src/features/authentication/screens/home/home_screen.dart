@@ -1,6 +1,11 @@
+import 'dart:io'; // Needed for File
+import 'package:flutter/foundation.dart'; // Needed for kIsWeb
 import 'package:flutter/material.dart';
 import 'package:myapp/src/constants/colours.dart';
 import 'package:myapp/src/constants/sizes.dart';
+import 'package:path_provider/path_provider.dart'; // To find where to save audio
+import 'package:record/record.dart'; // The recording package
+import 'package:audioplayers/audioplayers.dart'; // To play back user audio
 
 import '../../../../common_widgets/card/word_card.dart';
 import '../../../../repository/anki_repository/anki_repository.dart';
@@ -17,34 +22,102 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   /******************** VARIABLES *******************/
   final AnkiRepository _repository = AnkiRepository();
-  final AnkiAudioPlayer _audioPlayer = AnkiAudioPlayer();
+  final AnkiAudioPlayer _nativeAudioPlayer = AnkiAudioPlayer(); // Plays the native Japanese
 
-  //indexing cards in deck to track current position
+  // -- Recorder Variables --
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  final AudioPlayer _userAudioPlayer = AudioPlayer(); // Plays the user's voice
+
+  //indexing cards
   int _currentIndex = 0;
 
-  //future variable to cache data loading
+  //future variable to cache data
   late Future<List<AnkiCardModel>> _cardsFuture;
 
+  // -- Recorder State --
+  bool _isRecording = false;
+  String? _userRecordingPath; // Stores the path of the user's recording
+
   /******************** CYCLE METHODS *******************/
-  //init function to load cards once app is opened
   @override
   void initState() {
     super.initState();
     _cardsFuture = _repository.loadLocalDeck();
   }
 
-  //dispose function to release resources and audio player
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    _nativeAudioPlayer.dispose();
+    _userAudioPlayer.dispose();
+    _audioRecorder.dispose();
     super.dispose();
   }
 
+  /******************** RECORDER LOGIC *******************/
+  Future<void> _startRecording() async {
+    try {
+      // Check permissions
+      if (await _audioRecorder.hasPermission()) {
+
+        // We need a place to save the file.
+        // On Web, the browser handles this automatically, so path can be null.
+        // On Mobile, we need a specific temp folder.
+        String path = '';
+        if (!kIsWeb) {
+          final dir = await getTemporaryDirectory();
+          path = '${dir.path}/user_practice.m4a';
+        }
+
+        // Start recording
+        await _audioRecorder.start(const RecordConfig(), path: path);
+
+        setState(() {
+          _isRecording = true;
+          _userRecordingPath = null; // Reset previous recording
+        });
+      }
+    } catch (e) {
+      print("Error starting record: $e");
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    try {
+      // Stop returns the path where the file was saved
+      final path = await _audioRecorder.stop();
+
+      setState(() {
+        _isRecording = false;
+        _userRecordingPath = path; // Save the path so we can play it
+      });
+    } catch (e) {
+      print("Error stopping record: $e");
+    }
+  }
+
+  Future<void> _playUserRecording() async {
+    try {
+      if (_userRecordingPath != null) {
+        // DeviceFileSource is for Mobile/Desktop files
+        // UrlSource is usually returned by Web recorders
+        Source urlSource = (kIsWeb)
+            ? UrlSource(_userRecordingPath!)
+            : DeviceFileSource(_userRecordingPath!);
+
+        await _userAudioPlayer.play(urlSource);
+      }
+    } catch (e) {
+      print("Error playing user audio: $e");
+    }
+  }
+
   /******************** CARD LOGIC *******************/
-  //next card function to cycle through cards
-  //resets to 0 if end of list is reached
   void _nextCard(int totalCards) {
     setState(() {
+      // Reset user recording when moving to a new card
+      _userRecordingPath = null;
+      _isRecording = false;
+
       if (_currentIndex < totalCards - 1) {
         _currentIndex++;
       } else {
@@ -67,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         // CENTER EVERYTHING
         body: Center(
-          //constrain width for web and tablet views (max 600px)
+          //constrain width for web and tablet views
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
             child: FutureBuilder<List<AnkiCardModel>>(
@@ -102,13 +175,76 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 10),
 
                       /*----------------- CARD AREA -----------------*/
-                      //expanded area for the main card content
                       Expanded(
                         child: Center(
                           child: SingleChildScrollView(
-                            child: WordCard(
-                              card: currentCard,
-                              onPlayAudio: () => _audioPlayer.play(currentCard.wordAudio),
+                            child: Column(
+                              children: [
+                                WordCard(
+                                  card: currentCard,
+                                  onPlayAudio: () => _nativeAudioPlayer.play(currentCard.wordAudio),
+                                ),
+
+                                const SizedBox(height: 20),
+
+                                /*----------------- INPUT AUDIO (RECORDER) -----------------*/
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    // 1. Record Button
+                                    GestureDetector(
+                                      onLongPress: _startRecording, // Hold to record
+                                      onLongPressUp: _stopRecording, // Release to stop
+                                      onTap: () {
+                                        // Tap support (Tap start / Tap stop)
+                                        if (_isRecording) {
+                                          _stopRecording();
+                                        } else {
+                                          _startRecording();
+                                        }
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(15),
+                                        decoration: BoxDecoration(
+                                          color: _isRecording ? Colors.red : Colors.white,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.grey.withOpacity(0.3),
+                                              blurRadius: 10,
+                                              spreadRadius: 2,
+                                            )
+                                          ],
+                                        ),
+                                        child: Icon(
+                                          _isRecording ? Icons.stop : Icons.mic,
+                                          color: _isRecording ? Colors.white : tPrimaryColor,
+                                          size: 30,
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 20),
+
+                                    // 2. Playback Button (Only shows if recording exists)
+                                    if (_userRecordingPath != null && !_isRecording)
+                                      ElevatedButton.icon(
+                                        onPressed: _playUserRecording,
+                                        icon: const Icon(Icons.play_arrow),
+                                        label: const Text("My Voice"),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.grey[200],
+                                          foregroundColor: Colors.black,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                if (_isRecording)
+                                  const Padding(
+                                    padding: EdgeInsets.only(top: 10),
+                                    child: Text("Recording...", style: TextStyle(color: Colors.red)),
+                                  ),
+                              ],
                             ),
                           ),
                         ),
@@ -116,8 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: tDefaultSize),
 
-                      /*----------------- BUTTONS -----------------*/
-                      //next button to trigger index change
+                      /*----------------- NEXT BUTTON -----------------*/
                       SizedBox(
                         width: double.infinity,
                         height: 50,
