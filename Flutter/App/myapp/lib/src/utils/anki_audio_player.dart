@@ -23,7 +23,7 @@ class AnkiAudioPlayer {
       await _player.play(AssetSource('audio/$cleanName'));
 
     } catch (e) {
-      print("❌ Error playing audio: $e");
+      print("Error playing audio: $e");
     }
   }
 

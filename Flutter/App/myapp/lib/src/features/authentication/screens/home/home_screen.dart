@@ -56,25 +56,32 @@ class _HomeScreenState extends State<HomeScreen> {
   /******************** RECORDER LOGIC *******************/
   Future<void> _startRecording() async {
     try {
-      // Check permissions
       if (await _audioRecorder.hasPermission()) {
 
-        // We need a place to save the file.
-        // On Web, the browser handles this automatically, so path can be null.
-        // On Mobile, we need a specific temp folder.
-        String path = '';
-        if (!kIsWeb) {
-          final dir = await getTemporaryDirectory();
-          path = '${dir.path}/user_practice.m4a';
+        // --- WEB ONLY CONFIGURATION ---
+        if (kIsWeb) {
+          // Web needs Opus usually. AAC often crashes Chrome.
+          await _audioRecorder.start(
+              const RecordConfig(encoder: AudioEncoder.opus),
+              path: '' // Passing empty string lets the browser handle memory
+          );
         }
+        // --- MOBILE CONFIGURATION ---
+        else {
+          final dir = await getTemporaryDirectory();
+          String path = '${dir.path}/user_practice.m4a';
 
-        // Start recording
-        await _audioRecorder.start(const RecordConfig(), path: path);
+          await _audioRecorder.start(
+              const RecordConfig(encoder: AudioEncoder.aacLc),
+              path: path
+          );
+        }
 
         setState(() {
           _isRecording = true;
-          _userRecordingPath = null; // Reset previous recording
+          _userRecordingPath = null;
         });
+        print("Microphone started");
       }
     } catch (e) {
       print("Error starting record: $e");
