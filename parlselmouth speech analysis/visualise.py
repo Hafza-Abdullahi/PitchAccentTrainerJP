@@ -72,9 +72,13 @@ def showPitchOnGraph(*audio_files):
 @app.route("/process-audio", methods=["POST"])
 def process_audio():
     """
-    Accepts audio files from Flutter.
-    Runs showPitchOnGraph() using your code.
-    Returns the generated pitch graph as a PNG image.
+    Endpoint to process uploaded audio files.
+    
+    Accepts:
+        Multipart/form-data containing  the list of audio files.
+    
+    Returns:
+        A PNG image of the pitch contour graph.
     """
 
     if "files" not in request.files:
@@ -82,30 +86,34 @@ def process_audio():
 
     files = request.files.getlist("files")
 
-    # Save all uploaded audio files to temp directory
-    #
+    # Save all uploaded audio files to the system's temporary directory
     temp_files = []
     for f in files:
+        # Securely join paths
         temp_path = os.path.join(tempfile.gettempdir(), f.filename)
         f.save(temp_path)
         temp_files.append(temp_path)
 
-    # Run your original function
-    showPitchOnGraph(*temp_files)
+    try:
+        # Execute the pitch analysis logic
+        showPitchOnGraph(*temp_files)
 
-    #save plot to png instead og displaying gui
-    img_buffer = io.BytesIO()
-    plt.savefig(img_buffer, format="png", dpi=150)
-    img_buffer.seek(0)
+        # Save plot to an in-memory buffer to avoid disk I/O overhead
+        img_buffer = io.BytesIO()
+        plt.savefig(img_buffer, format="png", dpi=150)
+        img_buffer.seek(0)
+        
+        # Explicitly close the plot to free memory
+        plt.close()
 
-    #clear the figure 
-    plt.close()
+        # Return the image binary directly to the client
+        return send_file(img_buffer, mimetype="image/png")
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    #return img
-    return send_file(img_buffer, mimetype="image/png")
-
-
-#running the server 
-
+# Server entry point
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Use environment port if available (for Cloud), otherwise default to 5000
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
