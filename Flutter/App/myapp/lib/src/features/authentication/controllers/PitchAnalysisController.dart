@@ -9,7 +9,7 @@ class PitchAnalysisController {
 
   // The endpoint URL for the hosted Python Flask server.
   // Live url of render.
-  static const String _apiUrl = "https://pitch-accent-api.onrender.com/";
+  static const String _apiUrl = "https://pitch-accent-api.onrender.com/process-audio";
 
   /**
    * Transmits audio data to the backend server for pitch contour analysis.
