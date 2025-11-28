@@ -15,6 +15,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../../../common_widgets/card/word_card.dart';
 import '../../../../repository/anki_repository/anki_repository.dart';
 import '../../../../utils/anki_audio_player.dart';
+import '../../controllers/PitchAnalysisController.dart';
 import '../../models/anki_card_model.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -42,6 +43,12 @@ class _HomeScreenState extends State<HomeScreen> {
   // -- Drag & Drop State --
   bool _isHoveringDropZone = false;
   XFile? _droppedFile;
+
+  // init audio recorder
+  final PitchAnalysisController _pitchController = PitchAnalysisController();
+
+  // Variable to store the image result for later
+  Uint8List? _graphImage;
 
   /******************** CYCLE METHODS *******************/
   @override
@@ -78,7 +85,8 @@ class _HomeScreenState extends State<HomeScreen> {
           if (file.bytes != null) {
             pickedFile = XFile.fromData(file.bytes!, name: file.name);
           } else {
-            print("Error: The browser didn't give us the file data! (Bytes are null)");
+            print(
+                "Error: The browser didn't give us the file data! (Bytes are null)");
             return;
           }
         } else {
@@ -102,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
       print("Error picking file: $e");
     }
   }
+
   /******************** RECORDER LOGIC *******************/
   Future<void> _startRecording() async {
     setState(() => _droppedFile = null); // Clear file if we start recording
@@ -109,17 +118,14 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       if (await _audioRecorder.hasPermission()) {
         if (kIsWeb) {
-          await _audioRecorder.start(
-              const RecordConfig(encoder: AudioEncoder.opus),
-              path: ''
-          );
+          await _audioRecorder
+              .start(const RecordConfig(encoder: AudioEncoder.opus), path: '');
         } else {
           final dir = await getTemporaryDirectory();
           String path = '${dir.path}/user_practice.m4a';
           await _audioRecorder.start(
               const RecordConfig(encoder: AudioEncoder.aacLc),
-              path: path
-          );
+              path: path);
         }
 
         setState(() {
@@ -154,8 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
         } else {
           await _userAudioPlayer.play(DeviceFileSource(_droppedFile!.path));
         }
-      }
-      else if (_userRecordingPath != null) {
+      } else if (_userRecordingPath != null) {
         // Play the mic recording
         Source source = (kIsWeb)
             ? UrlSource(_userRecordingPath!)
@@ -164,6 +169,20 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       print("Error playing user audio: $e");
+    }
+  }
+
+  /******************** GRAPH LOGIC *******************/
+  Future<void> _generateGraph() async {
+    // Call the controller to generate the graph
+    // pass _droppedFile (for drag/drop/web) AND _userRecordingPath (for mobile mic)
+    final result = await _pitchController.analyzeAudio(
+        audioFile: _droppedFile, audioPath: _userRecordingPath);
+
+    if (result != null) {
+      setState(() {
+        _graphImage = result; // Save the image data to display
+      });
     }
   }
 
@@ -200,9 +219,12 @@ class _HomeScreenState extends State<HomeScreen> {
             child: FutureBuilder<List<AnkiCardModel>>(
               future: _cardsFuture,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-                if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}"));
-                if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("No cards found."));
+                if (snapshot.connectionState == ConnectionState.waiting)
+                  return const Center(child: CircularProgressIndicator());
+                if (snapshot.hasError)
+                  return Center(child: Text("Error: ${snapshot.error}"));
+                if (!snapshot.hasData || snapshot.data!.isEmpty)
+                  return const Center(child: Text("No cards found."));
 
                 final cards = snapshot.data!;
                 final currentCard = cards[_currentIndex];
@@ -211,7 +233,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.all(tDefaultSize),
                   child: Column(
                     children: [
-                      Text("Card ${_currentIndex + 1} of ${cards.length}", style: const TextStyle(color: Colors.grey)),
+                      Text("Card ${_currentIndex + 1} of ${cards.length}",
+                          style: const TextStyle(color: Colors.grey)),
                       const SizedBox(height: 10),
 
                       // --- MAIN CARD ---
@@ -222,7 +245,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 WordCard(
                                   card: currentCard,
-                                  onPlayAudio: () => _nativeAudioPlayer.play(currentCard.wordAudio),
+                                  onPlayAudio: () => _nativeAudioPlayer
+                                      .play(currentCard.wordAudio),
                                 ),
 
                                 const SizedBox(height: 20),
@@ -235,15 +259,31 @@ class _HomeScreenState extends State<HomeScreen> {
                                     GestureDetector(
                                       onLongPress: _startRecording,
                                       onLongPressUp: _stopRecording,
-                                      onTap: () => _isRecording ? _stopRecording() : _startRecording(),
+                                      onTap: () => _isRecording
+                                          ? _stopRecording()
+                                          : _startRecording(),
                                       child: Container(
                                         padding: const EdgeInsets.all(15),
                                         decoration: BoxDecoration(
-                                          color: _isRecording ? Colors.red : Colors.white,
+                                          color: _isRecording
+                                              ? Colors.red
+                                              : Colors.white,
                                           shape: BoxShape.circle,
-                                          boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.3), blurRadius: 10)],
+                                          boxShadow: [
+                                            BoxShadow(
+                                                color: Colors.grey
+                                                    .withOpacity(0.3),
+                                                blurRadius: 10)
+                                          ],
                                         ),
-                                        child: Icon(_isRecording ? Icons.stop : Icons.mic, color: _isRecording ? Colors.white : tPrimaryColor, size: 30),
+                                        child: Icon(
+                                            _isRecording
+                                                ? Icons.stop
+                                                : Icons.mic,
+                                            color: _isRecording
+                                                ? Colors.white
+                                                : tPrimaryColor,
+                                            size: 30),
                                       ),
                                     ),
 
@@ -260,8 +300,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                           });
                                         }
                                       },
-                                      onDragEntered: (details) => setState(() => _isHoveringDropZone = true),
-                                      onDragExited: (details) => setState(() => _isHoveringDropZone = false),
+                                      onDragEntered: (details) => setState(
+                                          () => _isHoveringDropZone = true),
+                                      onDragExited: (details) => setState(
+                                          () => _isHoveringDropZone = false),
 
                                       // CLICKABLE AREA
                                       child: InkWell(
@@ -273,15 +315,30 @@ class _HomeScreenState extends State<HomeScreen> {
                                           decoration: BoxDecoration(
                                             color: _isHoveringDropZone
                                                 ? Colors.blue.shade100
-                                                : (_droppedFile != null ? Colors.green.shade100 : Colors.white),
+                                                : (_droppedFile != null
+                                                    ? Colors.green.shade100
+                                                    : Colors.white),
                                             shape: BoxShape.circle,
-                                            border: _isHoveringDropZone ? Border.all(color: Colors.blue, width: 2) : null,
-                                            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.3), blurRadius: 10)],
+                                            border: _isHoveringDropZone
+                                                ? Border.all(
+                                                    color: Colors.blue,
+                                                    width: 2)
+                                                : null,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                  color: Colors.grey
+                                                      .withOpacity(0.3),
+                                                  blurRadius: 10)
+                                            ],
                                           ),
                                           // generic upload icon
                                           child: Icon(
-                                            _droppedFile != null ? Icons.check : Icons.upload,
-                                            color: _droppedFile != null ? Colors.green : Colors.grey,
+                                            _droppedFile != null
+                                                ? Icons.check
+                                                : Icons.upload,
+                                            color: _droppedFile != null
+                                                ? Colors.green
+                                                : Colors.grey,
                                             size: 28,
                                           ),
                                         ),
@@ -291,11 +348,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                     const SizedBox(width: 20),
 
                                     // 3. PLAYBACK BUTTON
-                                    if ((_userRecordingPath != null || _droppedFile != null) && !_isRecording)
+                                    if ((_userRecordingPath != null ||
+                                            _droppedFile != null) &&
+                                        !_isRecording)
                                       ElevatedButton.icon(
                                         onPressed: _playUserContent,
                                         icon: const Icon(Icons.play_arrow),
-                                        label: Text(_droppedFile != null ? "Play File" : "Play Rec"),
+                                        label: Text(_droppedFile != null
+                                            ? "Play File"
+                                            : "Play Rec"),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.grey[200],
                                           foregroundColor: Colors.black,
@@ -306,11 +367,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                 // Instructions
                                 if (_isRecording)
-                                  const Padding(padding: EdgeInsets.only(top: 10), child: Text("Recording...", style: TextStyle(color: Colors.red)))
+                                  const Padding(
+                                      padding: EdgeInsets.only(top: 10),
+                                      child: Text("Recording...",
+                                          style: TextStyle(color: Colors.red)))
                                 else if (_droppedFile != null)
-                                  Padding(padding: const EdgeInsets.only(top: 10), child: Text("Ready: ${_droppedFile!.name}", style: const TextStyle(color: Colors.green, fontSize: 12)))
+                                  Padding(
+                                      padding: const EdgeInsets.only(top: 10),
+                                      child: Text(
+                                          "Ready: ${_droppedFile!.name}",
+                                          style: const TextStyle(
+                                              color: Colors.green,
+                                              fontSize: 12)))
                                 else
-                                  const Padding(padding: EdgeInsets.only(top: 10), child: Text("Tap Mic or Upload Audio", style: TextStyle(color: Colors.grey, fontSize: 12))),
+                                  const Padding(
+                                      padding: EdgeInsets.only(top: 10),
+                                      child: Text("Tap Mic or Upload Audio",
+                                          style: TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12))),
                               ],
                             ),
                           ),
@@ -327,9 +402,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: () => _nextCard(cards.length),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: tPrimaryColor,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
                           ),
-                          child: const Text("Next Word", style: TextStyle(fontSize: 18, color: Colors.white)),
+                          child: const Text("Next Word",
+                              style:
+                                  TextStyle(fontSize: 18, color: Colors.white)),
                         ),
                       ),
                     ],
