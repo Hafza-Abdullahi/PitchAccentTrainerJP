@@ -1,11 +1,16 @@
-import 'dart:io'; // Needed for File
-import 'package:flutter/foundation.dart'; // Needed for kIsWeb
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:myapp/src/constants/colours.dart';
 import 'package:myapp/src/constants/sizes.dart';
-import 'package:path_provider/path_provider.dart'; // To find where to save audio
-import 'package:record/record.dart'; // The recording package
-import 'package:audioplayers/audioplayers.dart'; // To play back user audio
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
+import 'package:audioplayers/audioplayers.dart';
+
+// --- PACKAGES ---
+import 'package:desktop_drop/desktop_drop.dart';
+import 'package:cross_file/cross_file.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../../../common_widgets/card/word_card.dart';
 import '../../../../repository/anki_repository/anki_repository.dart';
@@ -22,21 +27,21 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   /******************** VARIABLES *******************/
   final AnkiRepository _repository = AnkiRepository();
-  final AnkiAudioPlayer _nativeAudioPlayer = AnkiAudioPlayer(); // Plays the native Japanese
+  final AnkiAudioPlayer _nativeAudioPlayer = AnkiAudioPlayer();
 
-  // -- Recorder Variables --
   final AudioRecorder _audioRecorder = AudioRecorder();
-  final AudioPlayer _userAudioPlayer = AudioPlayer(); // Plays the user's voice
+  final AudioPlayer _userAudioPlayer = AudioPlayer();
 
-  //indexing cards
   int _currentIndex = 0;
-
-  //future variable to cache data
   late Future<List<AnkiCardModel>> _cardsFuture;
 
   // -- Recorder State --
   bool _isRecording = false;
-  String? _userRecordingPath; // Stores the path of the user's recording
+  String? _userRecordingPath;
+
+  // -- Drag & Drop State --
+  bool _isHoveringDropZone = false;
+  XFile? _droppedFile;
 
   /******************** CYCLE METHODS *******************/
   @override
@@ -53,24 +58,64 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  /******************** FILE PICKER LOGIC (CLICK) *******************/
+  Future<void> _pickFile() async {
+    try {
+      // Open the file picker
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.audio,
+        allowMultiple: false,
+        withData: true,
+      );
+
+      if (result != null) {
+        PlatformFile file = result.files.first;
+        XFile pickedFile;
+
+        if (kIsWeb) {
+          // Web Logic: strictly use bytes
+          // check if bytes are available to avoid the crash
+          if (file.bytes != null) {
+            pickedFile = XFile.fromData(file.bytes!, name: file.name);
+          } else {
+            print("Error: The browser didn't give us the file data! (Bytes are null)");
+            return;
+          }
+        } else {
+          // Mobile/Desktop Logic: strictly use path
+          if (file.path != null) {
+            pickedFile = XFile(file.path!);
+          } else {
+            print("Error: File path is missing.");
+            return;
+          }
+        }
+
+        // update the UI
+        setState(() {
+          _droppedFile = pickedFile;
+          _userRecordingPath = null;
+        });
+        print("File picked successfully: ${_droppedFile!.name}");
+      }
+    } catch (e) {
+      print("Error picking file: $e");
+    }
+  }
   /******************** RECORDER LOGIC *******************/
   Future<void> _startRecording() async {
+    setState(() => _droppedFile = null); // Clear file if we start recording
+
     try {
       if (await _audioRecorder.hasPermission()) {
-
-        // --- WEB ONLY CONFIGURATION ---
         if (kIsWeb) {
-          // Web needs Opus usually. AAC often crashes Chrome.
           await _audioRecorder.start(
               const RecordConfig(encoder: AudioEncoder.opus),
-              path: '' // Passing empty string lets the browser handle memory
+              path: ''
           );
-        }
-        // --- MOBILE CONFIGURATION ---
-        else {
+        } else {
           final dir = await getTemporaryDirectory();
           String path = '${dir.path}/user_practice.m4a';
-
           await _audioRecorder.start(
               const RecordConfig(encoder: AudioEncoder.aacLc),
               path: path
@@ -81,7 +126,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _isRecording = true;
           _userRecordingPath = null;
         });
-        print("Microphone started");
       }
     } catch (e) {
       print("Error starting record: $e");
@@ -90,28 +134,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _stopRecording() async {
     try {
-      // Stop returns the path where the file was saved
       final path = await _audioRecorder.stop();
-
       setState(() {
         _isRecording = false;
-        _userRecordingPath = path; // Save the path so we can play it
+        _userRecordingPath = path;
       });
     } catch (e) {
       print("Error stopping record: $e");
     }
   }
 
-  Future<void> _playUserRecording() async {
+  /******************** PLAYBACK LOGIC *******************/
+  Future<void> _playUserContent() async {
     try {
-      if (_userRecordingPath != null) {
-        // DeviceFileSource is for Mobile/Desktop files
-        // UrlSource is usually returned by Web recorders
-        Source urlSource = (kIsWeb)
+      if (_droppedFile != null) {
+        // Play the dropped/picked file
+        if (kIsWeb) {
+          await _userAudioPlayer.play(UrlSource(_droppedFile!.path));
+        } else {
+          await _userAudioPlayer.play(DeviceFileSource(_droppedFile!.path));
+        }
+      }
+      else if (_userRecordingPath != null) {
+        // Play the mic recording
+        Source source = (kIsWeb)
             ? UrlSource(_userRecordingPath!)
             : DeviceFileSource(_userRecordingPath!);
-
-        await _userAudioPlayer.play(urlSource);
+        await _userAudioPlayer.play(source);
       }
     } catch (e) {
       print("Error playing user audio: $e");
@@ -121,8 +170,8 @@ class _HomeScreenState extends State<HomeScreen> {
   /******************** CARD LOGIC *******************/
   void _nextCard(int totalCards) {
     setState(() {
-      // Reset user recording when moving to a new card
       _userRecordingPath = null;
+      _droppedFile = null;
       _isRecording = false;
 
       if (_currentIndex < totalCards - 1) {
@@ -145,28 +194,16 @@ class _HomeScreenState extends State<HomeScreen> {
           elevation: 0,
           centerTitle: true,
         ),
-        // CENTER EVERYTHING
         body: Center(
-          //constrain width for web and tablet views
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 600),
             child: FutureBuilder<List<AnkiCardModel>>(
               future: _cardsFuture,
               builder: (context, snapshot) {
-                /*----------------- LOADING STATE -----------------*/
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                /*----------------- ERROR STATE -----------------*/
-                else if (snapshot.hasError) {
-                  return Center(child: Text("Error: ${snapshot.error}"));
-                }
-                /*----------------- EMPTY STATE -----------------*/
-                else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text("No cards found."));
-                }
+                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}"));
+                if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("No cards found."));
 
-                //data loaded successfully
                 final cards = snapshot.data!;
                 final currentCard = cards[_currentIndex];
 
@@ -174,14 +211,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.all(tDefaultSize),
                   child: Column(
                     children: [
-                      /*----------------- PROGRESS INDICATOR -----------------*/
-                      Text(
-                        "Card ${_currentIndex + 1} of ${cards.length}",
-                        style: const TextStyle(color: Colors.grey),
-                      ),
+                      Text("Card ${_currentIndex + 1} of ${cards.length}", style: const TextStyle(color: Colors.grey)),
                       const SizedBox(height: 10),
 
-                      /*----------------- CARD AREA -----------------*/
+                      // --- MAIN CARD ---
                       Expanded(
                         child: Center(
                           child: SingleChildScrollView(
@@ -194,51 +227,75 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                 const SizedBox(height: 20),
 
-                                /*----------------- INPUT AUDIO (RECORDER) -----------------*/
+                                /*----------------- AUDIO CONTROLS -----------------*/
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    // 1. Record Button
+                                    // MIC BUTTON
                                     GestureDetector(
-                                      onLongPress: _startRecording, // Hold to record
-                                      onLongPressUp: _stopRecording, // Release to stop
-                                      onTap: () {
-                                        // Tap support (Tap start / Tap stop)
-                                        if (_isRecording) {
-                                          _stopRecording();
-                                        } else {
-                                          _startRecording();
-                                        }
-                                      },
+                                      onLongPress: _startRecording,
+                                      onLongPressUp: _stopRecording,
+                                      onTap: () => _isRecording ? _stopRecording() : _startRecording(),
                                       child: Container(
                                         padding: const EdgeInsets.all(15),
                                         decoration: BoxDecoration(
                                           color: _isRecording ? Colors.red : Colors.white,
                                           shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.grey.withOpacity(0.3),
-                                              blurRadius: 10,
-                                              spreadRadius: 2,
-                                            )
-                                          ],
+                                          boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.3), blurRadius: 10)],
                                         ),
-                                        child: Icon(
-                                          _isRecording ? Icons.stop : Icons.mic,
-                                          color: _isRecording ? Colors.white : tPrimaryColor,
-                                          size: 30,
+                                        child: Icon(_isRecording ? Icons.stop : Icons.mic, color: _isRecording ? Colors.white : tPrimaryColor, size: 30),
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 20),
+
+                                    // DROP ZONE / UPLOAD BUTTON
+                                    // Drop target area
+                                    DropTarget(
+                                      onDragDone: (details) {
+                                        if (details.files.isNotEmpty) {
+                                          setState(() {
+                                            _droppedFile = details.files.first;
+                                            _userRecordingPath = null;
+                                          });
+                                        }
+                                      },
+                                      onDragEntered: (details) => setState(() => _isHoveringDropZone = true),
+                                      onDragExited: (details) => setState(() => _isHoveringDropZone = false),
+
+                                      // CLICKABLE AREA
+                                      child: InkWell(
+                                        onTap: _pickFile, //
+                                        borderRadius: BorderRadius.circular(50),
+                                        child: Container(
+                                          width: 60,
+                                          height: 60,
+                                          decoration: BoxDecoration(
+                                            color: _isHoveringDropZone
+                                                ? Colors.blue.shade100
+                                                : (_droppedFile != null ? Colors.green.shade100 : Colors.white),
+                                            shape: BoxShape.circle,
+                                            border: _isHoveringDropZone ? Border.all(color: Colors.blue, width: 2) : null,
+                                            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.3), blurRadius: 10)],
+                                          ),
+                                          // generic upload icon
+                                          child: Icon(
+                                            _droppedFile != null ? Icons.check : Icons.upload,
+                                            color: _droppedFile != null ? Colors.green : Colors.grey,
+                                            size: 28,
+                                          ),
                                         ),
                                       ),
                                     ),
 
                                     const SizedBox(width: 20),
 
-                                    // 2. Playback Button (Only shows if recording exists)
-                                    if (_userRecordingPath != null && !_isRecording)
+                                    // 3. PLAYBACK BUTTON
+                                    if ((_userRecordingPath != null || _droppedFile != null) && !_isRecording)
                                       ElevatedButton.icon(
-                                        onPressed: _playUserRecording,
+                                        onPressed: _playUserContent,
                                         icon: const Icon(Icons.play_arrow),
-                                        label: const Text("My Voice"),
+                                        label: Text(_droppedFile != null ? "Play File" : "Play Rec"),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.grey[200],
                                           foregroundColor: Colors.black,
@@ -246,11 +303,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                   ],
                                 ),
+
+                                // Instructions
                                 if (_isRecording)
-                                  const Padding(
-                                    padding: EdgeInsets.only(top: 10),
-                                    child: Text("Recording...", style: TextStyle(color: Colors.red)),
-                                  ),
+                                  const Padding(padding: EdgeInsets.only(top: 10), child: Text("Recording...", style: TextStyle(color: Colors.red)))
+                                else if (_droppedFile != null)
+                                  Padding(padding: const EdgeInsets.only(top: 10), child: Text("Ready: ${_droppedFile!.name}", style: const TextStyle(color: Colors.green, fontSize: 12)))
+                                else
+                                  const Padding(padding: EdgeInsets.only(top: 10), child: Text("Tap Mic or Upload Audio", style: TextStyle(color: Colors.grey, fontSize: 12))),
                               ],
                             ),
                           ),
@@ -259,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: tDefaultSize),
 
-                      /*----------------- NEXT BUTTON -----------------*/
+                      // --- NEXT BUTTON ---
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -267,14 +327,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: () => _nextCard(cards.length),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: tPrimaryColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
-                          child: const Text(
-                            "Next Word",
-                            style: TextStyle(fontSize: 18, color: Colors.white),
-                          ),
+                          child: const Text("Next Word", style: TextStyle(fontSize: 18, color: Colors.white)),
                         ),
                       ),
                     ],
