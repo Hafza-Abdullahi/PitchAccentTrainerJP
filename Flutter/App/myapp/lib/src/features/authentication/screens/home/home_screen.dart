@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data'; // needed for Uint8List
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:myapp/src/constants/colours.dart';
@@ -29,7 +31,6 @@ class _HomeScreenState extends State<HomeScreen> {
   /******************** VARIABLES *******************/
   final AnkiRepository _repository = AnkiRepository();
   final AnkiAudioPlayer _nativeAudioPlayer = AnkiAudioPlayer();
-
   final AudioRecorder _audioRecorder = AudioRecorder();
   final AudioPlayer _userAudioPlayer = AudioPlayer();
 
@@ -49,6 +50,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Variable to store the image result for later
   Uint8List? _graphImage;
+  bool _isAnalyzing = false; // To show a loading spinner while waiting for the server
+
+
 
   /******************** CYCLE METHODS *******************/
   @override
@@ -172,6 +176,42 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /******************** ANALYSIS LOGIC *******************/
+
+  // Sends the current audio to the server and updates the UI with the result
+  Future<void> _runAnalysis() async {
+    // 1. Validation: Ensure we actually have audio to send
+    if (_droppedFile == null && _userRecordingPath == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please record or upload audio first."))
+      );
+      return;
+    }
+
+    setState(() {
+      _isAnalyzing = true; // Start loading spinner
+      _graphImage = null;  // Clear previous graph
+    });
+
+    // 2. Call the Controller
+    final Uint8List? result = await _pitchController.analyzeAudio(
+        audioFile: _droppedFile,
+        audioPath: _userRecordingPath
+    );
+
+    // 3. Update UI
+    setState(() {
+      _isAnalyzing = false; // Stop loading
+      if (result != null) {
+        _graphImage = result; // Display the graph
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Analysis failed. Please Check server connection."))
+        );
+      }
+    });
+  }
+
   /******************** GRAPH LOGIC *******************/
   Future<void> _generateGraph() async {
     // Call the controller to generate the graph
@@ -192,6 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _userRecordingPath = null;
       _droppedFile = null;
       _isRecording = false;
+      _graphImage = null; // Clear the graph for the new word.
 
       if (_currentIndex < totalCards - 1) {
         _currentIndex++;
@@ -219,12 +260,15 @@ class _HomeScreenState extends State<HomeScreen> {
             child: FutureBuilder<List<AnkiCardModel>>(
               future: _cardsFuture,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting)
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
-                if (snapshot.hasError)
+                }
+                if (snapshot.hasError) {
                   return Center(child: Text("Error: ${snapshot.error}"));
-                if (!snapshot.hasData || snapshot.data!.isEmpty)
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(child: Text("No cards found."));
+                }
 
                 final cards = snapshot.data!;
                 final currentCard = cards[_currentIndex];
@@ -245,8 +289,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 WordCard(
                                   card: currentCard,
-                                  onPlayAudio: () => _nativeAudioPlayer
-                                      .play(currentCard.wordAudio),
+                                  onPlayAudio: () =>
+                                      _nativeAudioPlayer.play(
+                                          currentCard.wordAudio),
                                 ),
 
                                 const SizedBox(height: 20),
@@ -259,7 +304,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     GestureDetector(
                                       onLongPress: _startRecording,
                                       onLongPressUp: _stopRecording,
-                                      onTap: () => _isRecording
+                                      onTap: () =>
+                                      _isRecording
                                           ? _stopRecording()
                                           : _startRecording(),
                                       child: Container(
@@ -270,45 +316,45 @@ class _HomeScreenState extends State<HomeScreen> {
                                               : Colors.white,
                                           shape: BoxShape.circle,
                                           boxShadow: [
-                                            BoxShadow(
-                                                color: Colors.grey
-                                                    .withOpacity(0.3),
+                                            BoxShadow(color: Colors.grey
+                                                .withOpacity(0.3),
                                                 blurRadius: 10)
                                           ],
                                         ),
                                         child: Icon(
-                                            _isRecording
-                                                ? Icons.stop
-                                                : Icons.mic,
-                                            color: _isRecording
-                                                ? Colors.white
-                                                : tPrimaryColor,
-                                            size: 30),
+                                            _isRecording ? Icons.stop : Icons
+                                                .mic, color: _isRecording
+                                            ? Colors.white
+                                            : tPrimaryColor, size: 30),
                                       ),
                                     ),
 
                                     const SizedBox(width: 20),
 
                                     // DROP ZONE / UPLOAD BUTTON
-                                    // Drop target area
                                     DropTarget(
                                       onDragDone: (details) {
                                         if (details.files.isNotEmpty) {
                                           setState(() {
-                                            _droppedFile = details.files.first;
+                                            _droppedFile =
+                                                details.files.first;
                                             _userRecordingPath = null;
+                                            _graphImage = null;
                                           });
                                         }
                                       },
-                                      onDragEntered: (details) => setState(
-                                          () => _isHoveringDropZone = true),
-                                      onDragExited: (details) => setState(
-                                          () => _isHoveringDropZone = false),
+                                      onDragEntered: (details) =>
+                                          setState(() =>
+                                          _isHoveringDropZone = true),
+                                      onDragExited: (details) =>
+                                          setState(() =>
+                                          _isHoveringDropZone = false),
 
                                       // CLICKABLE AREA
                                       child: InkWell(
-                                        onTap: _pickFile, //
-                                        borderRadius: BorderRadius.circular(50),
+                                        onTap: _pickFile,
+                                        borderRadius: BorderRadius.circular(
+                                            50),
                                         child: Container(
                                           width: 60,
                                           height: 60,
@@ -316,18 +362,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                             color: _isHoveringDropZone
                                                 ? Colors.blue.shade100
                                                 : (_droppedFile != null
-                                                    ? Colors.green.shade100
-                                                    : Colors.white),
+                                                ? Colors.green.shade100
+                                                : Colors.white),
                                             shape: BoxShape.circle,
                                             border: _isHoveringDropZone
                                                 ? Border.all(
-                                                    color: Colors.blue,
-                                                    width: 2)
+                                                color: Colors.blue, width: 2)
                                                 : null,
                                             boxShadow: [
-                                              BoxShadow(
-                                                  color: Colors.grey
-                                                      .withOpacity(0.3),
+                                              BoxShadow(color: Colors.grey
+                                                  .withOpacity(0.3),
                                                   blurRadius: 10)
                                             ],
                                           ),
@@ -349,7 +393,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                     // 3. PLAYBACK BUTTON
                                     if ((_userRecordingPath != null ||
-                                            _droppedFile != null) &&
+                                        _droppedFile != null) &&
                                         !_isRecording)
                                       ElevatedButton.icon(
                                         onPressed: _playUserContent,
@@ -370,22 +414,63 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const Padding(
                                       padding: EdgeInsets.only(top: 10),
                                       child: Text("Recording...",
-                                          style: TextStyle(color: Colors.red)))
-                                else if (_droppedFile != null)
-                                  Padding(
-                                      padding: const EdgeInsets.only(top: 10),
-                                      child: Text(
-                                          "Ready: ${_droppedFile!.name}",
-                                          style: const TextStyle(
-                                              color: Colors.green,
-                                              fontSize: 12)))
-                                else
-                                  const Padding(
-                                      padding: EdgeInsets.only(top: 10),
-                                      child: Text("Tap Mic or Upload Audio",
                                           style: TextStyle(
-                                              color: Colors.grey,
-                                              fontSize: 12))),
+                                              color: Colors.red)))
+                                else
+                                  if (_droppedFile != null)
+                                    Padding(padding: const EdgeInsets.only(
+                                        top: 10),
+                                        child: Text(
+                                            "Ready: ${_droppedFile!.name}",
+                                            style: const TextStyle(
+                                                color: Colors.green,
+                                                fontSize: 12)))
+                                  else
+                                    const Padding(
+                                        padding: EdgeInsets.only(top: 10),
+                                        child: Text("Tap Mic or Upload Audio",
+                                            style: TextStyle(
+                                                color: Colors.grey,
+                                                fontSize: 12))),
+
+                                const SizedBox(height: 20),
+
+                                /*----------------- ANALYZE SECTION -----------------*/
+                                // Only show if audio is present and not recording
+                                if ((_userRecordingPath != null || _droppedFile != null) && !_isRecording)
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: _isAnalyzing ? null : _generateGraph,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.purple,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: _isAnalyzing
+                                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                          : const Text("Analyze Pitch"),
+                                    ),
+                                  ),
+
+                                const SizedBox(height: 20),
+
+                                /*----------------- RESULT GRAPH -----------------*/
+                                if (_graphImage != null)
+                                  Container(
+                                    height: 200,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.grey.shade300),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Image.memory(
+                                        _graphImage!,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
@@ -405,9 +490,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10)),
                           ),
-                          child: const Text("Next Word",
-                              style:
-                                  TextStyle(fontSize: 18, color: Colors.white)),
+                          child: const Text("Next Word", style: TextStyle(
+                              fontSize: 18, color: Colors.white)),
                         ),
                       ),
                     ],
