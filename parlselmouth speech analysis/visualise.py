@@ -26,10 +26,15 @@ import os
 import tempfile
 
 # converting webM  to wav for site
-from pydub import AudioSegment 
+from pydub import AudioSegment
+
+# Text to speech
+import whisper 
+import pykakasi # for converting jp Kanji to eng alphabet (romaji)
 
 matplotlib.use('Agg')  #disable qt5gg for the server
-
+# global instance of the word
+current_word = ""
 app = Flask(__name__)
 # This allows your Flutter app from ANY URL to talk to this server
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -74,7 +79,7 @@ def showPitchOnGraph(*audio_files):
     
     plt.xlabel("Time (s)")
     plt.ylabel("Frequency (Hz)")
-    plt.title("Pitch Contour Comparison")
+    plt.title("Pitch Contour Comparison for " + current_word)
     plt.legend()
     plt.grid(True, alpha=0.3)
     
@@ -118,6 +123,24 @@ def process_audio():
                 print(f"Conversion failed for {f.filename}: {conv_err}")
                 # If conversion fails, try using the original (fallback)
                 converted_files.append(t.name)
+
+        # Text to speech using openAI whisper lib
+        # Load model and audio
+        model = whisper.load_model("base")
+        temp_audio = converted_files[0] 
+        result = model.transcribe(temp_audio, fp16=False)
+        japanese_text = result["text"]
+
+        # convert kanji to romaji
+        kks = pykakasi.kakasi()
+        converted = kks.convert(japanese_text)
+
+        # Extract romaji
+        for item in converted:
+            current_word += item['hepburn'] + " " # 'hepburn' is the standard romaji style
+
+        #final clean romaji
+        current_word = current_word.strip()
 
         # Run analysis
         showPitchOnGraph(*converted_files)
