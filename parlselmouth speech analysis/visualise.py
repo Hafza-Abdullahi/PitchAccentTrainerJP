@@ -25,6 +25,9 @@ import io
 import os
 import tempfile
 
+# converting webM  to wav for site
+from pydub import AudioSegment 
+
 matplotlib.use('Agg')  #disable qt5gg for the server
 
 app = Flask(__name__)
@@ -93,6 +96,7 @@ def process_audio():
 
     # Save all uploaded audio files to the system's temporary directory
     temp_files = []
+    converted_files = []
 
     try:
         for f in files:
@@ -103,8 +107,20 @@ def process_audio():
             t.close() # Close so other processes can read it
             temp_files.append(t.name)
 
+            # CONVERT TO WAV using FFmpeg
+            # This turns the WebM into a standard WAV
+            wav_path = t.name + ".wav"
+            try:
+                audio = AudioSegment.from_file(t.name)
+                audio.export(wav_path, format="wav")
+                converted_files.append(wav_path)
+            except Exception as conv_err:
+                print(f"Conversion failed for {f.filename}: {conv_err}")
+                # If conversion fails, try using the original (fallback)
+                converted_files.append(t.name)
+
         # Run analysis
-        showPitchOnGraph(*temp_files)
+        showPitchOnGraph(*converted_files)
 
         img_buffer = io.BytesIO()
         plt.savefig(img_buffer, format="png", dpi=150)
