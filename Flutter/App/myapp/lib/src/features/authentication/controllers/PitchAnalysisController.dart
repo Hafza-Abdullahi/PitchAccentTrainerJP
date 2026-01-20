@@ -32,22 +32,32 @@ class PitchAnalysisController {
 
       // 1. Attach users recording
       if (kIsWeb) {
-        // In a Web environment, direct file system access is restricted.
-        // The file must be read as a byte stream from the XFile object.
-        if (audioFile != null) {
-          final Uint8List bytes = await audioFile.readAsBytes();
+        Uint8List? fileBytes;
 
+        // Scenario A: User uploaded/dragged a file (XFile)
+        if (audioFile != null) {
+          fileBytes = await audioFile.readAsBytes();
+        }
+        // User recorded audio (Blob URL String)
+        else if (audioPath != null) {
+          // On Web, XFile can read a Blob URL (e.g. "blob:http://...")
+          final recordedFile = XFile(audioPath);
+          fileBytes = await recordedFile.readAsBytes();
+        }
+
+        // Proceed if we successfully got bytes from A or B
+        if (fileBytes != null) {
           request.files.add(http.MultipartFile.fromBytes(
               'files',
-              bytes,
-              filename: 'user_audio.webm' // Web browsers typically record in WebM/Opus format.
+              fileBytes,
+              filename: 'user_audio.webm'
           ));
         } else {
-          // If no file object is provided on the web, operation cannot proceed.
-          print("Error: No audio file object provided for Web upload.");
+          print("Error: No audio file or recording found for Web upload.");
           return null;
         }
-      } else {
+
+    } else {
         // In Mobile/Desktop environments, the file can be accessed directly via its path.
         if (audioPath != null) {
           request.files.add(await http.MultipartFile.fromPath(
