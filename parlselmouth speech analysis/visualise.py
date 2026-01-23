@@ -112,11 +112,26 @@ def process_audio():
         t.close()
         temp_webm = t.name
 
+        # check if file is empty 
+        file_size = os.path.getsize(temp_webm)
+        print(f"Received file: {temp_webm}, Size: {file_size} bytes")
+
         # CONVERT TO WAV using FFmpeg
         # This turns the WebM into a standard WAV
         temp_wav = t.name + ".wav"
-        audio = AudioSegment.from_file(temp_webm)
-        audio.export(temp_wav, format="wav")
+        
+        # Try converting 
+        try:
+            audio = AudioSegment.from_file(temp_webm)
+            audio.export(temp_wav, format="wav")
+        except Exception as conv_err:
+            print(f"FFmpeg Conversion Failed: {conv_err}")
+            # If Flutter sent a WAV but named it WebM, try simple rename
+            if file_size > 0:
+                print("Attempting to use raw file...")
+                temp_wav = temp_webm 
+            else:
+                raise conv_err
 
         # Google Transcription 
         recognizer = sr.Recognizer()
@@ -134,7 +149,7 @@ def process_audio():
             transcription = f"API Error: {e}"
 
         # Run analysis
-        showPitchOnGraph(*temp_wav)
+        showPitchOnGraph(temp_wav)
 
         img_buffer = io.BytesIO()
         plt.savefig(img_buffer, format="png", dpi=150)
