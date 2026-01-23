@@ -34,8 +34,13 @@ import speech_recognition as sr
 import pykakasi
 # for parsing urls 
 import urllib.parse 
+# font that accepts jp
+import matplotlib.font_manager as fm 
 
 matplotlib.use('Agg')
+
+# font for matplot 
+plt.rcParams['font.family'] = ['Noto Sans CJK JP', 'sans-serif']
 
 app = Flask(__name__)
 # This allows your Flutter app from ANY URL to talk to this server

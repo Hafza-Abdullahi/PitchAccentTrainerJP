@@ -5,10 +5,11 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Install system libraries required for audio analysis (libsndfile)
-# We need ffmpeg to convert WebM to WAV
+# We need ffmpeg to convert WebM to WAV, fonts to display jp
 RUN apt-get update && apt-get install -y \
     libsndfile1 \
     ffmpeg \
+    fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file into the container at /app
