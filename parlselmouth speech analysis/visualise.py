@@ -30,12 +30,10 @@ from pydub import AudioSegment
 
 # googles speech recogn 
 import speech_recognition as sr 
+# Needed for parsing url
+import urllib.parse 
 
 matplotlib.use('Agg')  #disable qt5gg for the server
-
-# global instance of the word
-current_word = "Default"
-
 
 app = Flask(__name__)
 # This allows your Flutter app from ANY URL to talk to this server
@@ -44,44 +42,43 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 def moving_average(data, window_size):
     return np.convolve(data, np.ones(window_size)/window_size, mode='same')
 
-def showPitchOnGraph(*audio_files):
+def showPitchOnGraph(audio_path, word_label="Unknown"):
     # Create plot
     plt.figure(figsize=(12, 8))
     
-    colors = ['blue', 'red', 'green', 'orange', 'purple']  #Diff colours for eahc file
-    for i, audio_file in enumerate(audio_files):
-        try:
-            #load audio
-            snd = parselmouth.Sound(audio_file)
+    line_colour = 'blue'
+    try:
+        #load audio
+        snd = parselmouth.Sound(audio_path)
 
-            #extract the pitch
-            pitch = snd.to_pitch()
-            times = pitch.xs()
-            frequencies = pitch.selected_array["frequency"]
+        #extract the pitch
+        pitch = snd.to_pitch()
+        times = pitch.xs()
+        frequencies = pitch.selected_array["frequency"]
 
-            #different smoothing algorithms,
-            #ma_smoothed = moving_average(frequencies, window_size=8)  # Moving Average
-            #gaussian_smoothed = gaussian_filter1d(frequencies, sigma=2)  # Gaussian Smoothing
-            #savgol_smoothed = savgol_filter(frequencies, window_length=11, polyorder=2)  # Savitzky-Golay
-            #average_smoothed = (ma_smoothed + gaussian_smoothed + savgol_smoothed) / 3
+        #different smoothing algorithms,
+        #ma_smoothed = moving_average(frequencies, window_size=8)  # Moving Average
+        #gaussian_smoothed = gaussian_filter1d(frequencies, sigma=2)  # Gaussian Smoothing
+        #savgol_smoothed = savgol_filter(frequencies, window_length=11, polyorder=2)  # Savitzky-Golay
+        #average_smoothed = (ma_smoothed + gaussian_smoothed + savgol_smoothed) / 3
 
-            # Basic plotting if smoothing fails or just simply plot
-            label = audio_file.split('/')[-1]
-            plt.plot(times, frequencies, label=f"{label}", linewidth=2, color=colors[i % len(colors)])
+        # Basic plotting if smoothing fails or just simply plot
+        label = audio_path.split('/')[-1]
+        plt.plot(times, frequencies, label=f"{label}", linewidth=2, color=line_colour)
 
-            #Get filename for label
-            label = audio_file.split('/')[-1]  #just name
+        #Get filename for label
+        label = audio_path.split('/')[-1]  #just name
 
-            # Plot
-            plt.plot(times, frequencies, label=f"{label} - Original", alpha=0.3, linewidth=1, color=colors[i])
-            #plt.plot(times, average_smoothed, label=f"{label} - Average", linewidth=2, color=colors[i])
+        # Plot
+        plt.plot(times, frequencies, label=f"{label} - Original", alpha=0.3, linewidth=1, color=line_colour)
+        #plt.plot(times, average_smoothed, label=f"{label} - Average", linewidth=2, color=colors[i])
 
-        except Exception as e:
-            print(f"Error processing {audio_file}: {e}")
+    except Exception as e:
+        print(f"Error processing {audio_path}: {e}")
     
     plt.xlabel("Time (s)")
     plt.ylabel("Frequency (Hz)")
-    plt.title("Pitch Contour Comparison for " + current_word)
+    plt.title("Pitch Contour Comparison for " + word_label)
     plt.legend()
     plt.grid(True, alpha=0.3)
     
@@ -108,6 +105,7 @@ def process_audio():
     temp_wav = None
 
     try:
+        # save Upload
         # delete=False so parselmouth can open it by path
         suffix = os.path.splitext(file.filename)[1] or ".webm"
         t = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
@@ -138,14 +136,13 @@ def process_audio():
 
         # Google Transcription 
         recognizer = sr.Recognizer()
-        transcription = ""
+        transcription = "Unknown"
 
         try:
             with sr.AudioFile(temp_wav) as source:
                 audio_data = recognizer.record(source)
                 # 'ja-JP' tells Google to listen for Japanese
                 transcription = recognizer.recognize_google(audio_data, language="ja-JP")
-                current_word = transcription
                 print(f"Recognized: {transcription}")
         except sr.UnknownValueError:
             transcription = "Could not understand audio"
@@ -154,7 +151,7 @@ def process_audio():
 
         
         # Run analysis
-        showPitchOnGraph(temp_wav)
+        showPitchOnGraph(temp_wav, transcription)
 
         img_buffer = io.BytesIO()
         plt.savefig(img_buffer, format="png", dpi=150)
@@ -163,8 +160,11 @@ def process_audio():
 
         # Send respone back in url
         response = send_file(img_buffer, mimetype="image/png")
-        # Url encoded to accept jp characters
-        response.headers["X-Transcription"] = str(transcription.encode('utf-8'))
+
+        # URL Encode the Japanese text so headers don't break
+        # Example: '猫' becomes '%E7%8C%AB'
+        safe_header = urllib.parse.quote(transcription)
+        response.headers["X-Transcription"] = safe_header
 
         
         return response
