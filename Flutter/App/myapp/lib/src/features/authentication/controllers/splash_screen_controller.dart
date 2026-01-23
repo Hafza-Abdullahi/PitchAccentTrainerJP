@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:myapp/src/features/authentication/screens/home/home_screen.dart';
 import 'package:myapp/src/features/authentication/screens/welcome/welcome_screen.dart';
 
 class SplashScreenController extends GetxController {
@@ -9,6 +10,6 @@ class SplashScreenController extends GetxController {
     await Future.delayed(Duration(milliseconds: 2000));
     print("Navigating to WelcomeScreen..."); // Debugging line
     Get.off(() =>
-        WelcomeScreen()); // Replaces the current screen with WelcomeScreen
+        HomeScreen()); // Replaces the current screen with WelcomeScreen, currently homescreen for testing
   }
 }

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:myapp/firebase_options.dart';
+import 'package:myapp/src/features/authentication/screens/home/home_screen.dart';
 import 'package:myapp/src/features/authentication/screens/splash/splash_screen.dart';
 import 'package:myapp/src/repository/authentication_repository/authentication_repository.dart';
 
@@ -28,7 +29,7 @@ class MyApp extends StatelessWidget {
               seedColor: const Color.fromARGB(255, 209, 30, 30)),
           useMaterial3: true,
         ),
-        home: SplashScreen() //const CircularProgressIndicator(), //to keep logged in
+        home: HomeScreen() //const CircularProgressIndicator(), //to keep logged in
     );
   }
 }

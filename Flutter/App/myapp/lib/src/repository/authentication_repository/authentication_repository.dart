@@ -30,15 +30,17 @@ class AuthenticationRepository extends GetxController {
         .bindStream(_auth.userChanges()); //userChanges() is always listening
 
     //ever handles events and is always ready, when called, calls _setInitialScreen
-    ever(firebaseUser, _setInitialScreen);
+    //ever(firebaseUser, _setInitialScreen);
   }
 
+  /****************** TESTING PURPOSE: SET TO HOMESCREEN **************************/ /**
   _setInitialScreen(User? user) {
     //user is logged out or a new user -> go to welcome screen : otherwise uesr is logged in -> homescreen
+
     user == null
-        ? Get.offAll(() => const WelcomeScreen())
+        ? Get.offAll(() => const WelcomeScreen()) //should be Welcome Screen
         : Get.offAll(() => const HomeScreen());
-  }
+  } **/
 
 //------------------------GOOGLE SIGN IN -------------------------------*/
 //future method to send an async request for GOOGLE

@@ -457,7 +457,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 /*----------------- RESULT GRAPH -----------------*/
                                 if (_graphImage != null)
                                   Container(
-                                    height: 200,
+                                    height: 800,
                                     width: double.infinity,
                                     decoration: BoxDecoration(
                                       border: Border.all(color: Colors.grey.shade300),
