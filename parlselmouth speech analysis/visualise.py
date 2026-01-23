@@ -98,40 +98,40 @@ def process_audio():
 
     # Grab the audio file
     file = request.files.getlist("files")[0]
+    print("files recieved")
 
     # Save audio temporarily for before and after conversion
     temp_webm = None
     temp_wav = None
 
     try:
-        for f in file:
-            # delete=False so parselmouth can open it by path
-            suffix = os.path.splitext(file.filename)[1] or ".webm"
-            t = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-            file.save(t.name)
-            t.close()
-            temp_webm = t.name
+        # delete=False so parselmouth can open it by path
+        suffix = os.path.splitext(file.filename)[1] or ".webm"
+        t = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        file.save(t.name)
+        t.close()
+        temp_webm = t.name
 
-            # CONVERT TO WAV using FFmpeg
-            # This turns the WebM into a standard WAV
-            temp_wav = t.name + ".wav"
-            audio = AudioSegment.from_file(temp_webm)
-            audio.export(temp_wav, format="wav")
+        # CONVERT TO WAV using FFmpeg
+        # This turns the WebM into a standard WAV
+        temp_wav = t.name + ".wav"
+        audio = AudioSegment.from_file(temp_webm)
+        audio.export(temp_wav, format="wav")
 
-            # Google Transcription 
-            recognizer = sr.Recognizer()
-            transcription = ""
+        # Google Transcription 
+        recognizer = sr.Recognizer()
+        transcription = ""
 
-            try:
-                with sr.AudioFile(temp_wav) as source:
-                    audio_data = recognizer.record(source)
-                    # 'ja-JP' tells Google to listen for Japanese
-                    transcription = recognizer.recognize_google(audio_data, language="ja-JP")
-                    print(f"Recognized: {transcription}")
-            except sr.UnknownValueError:
-                transcription = "Could not understand audio"
-            except sr.RequestError as e:
-                transcription = f"API Error: {e}"
+        try:
+            with sr.AudioFile(temp_wav) as source:
+                audio_data = recognizer.record(source)
+                # 'ja-JP' tells Google to listen for Japanese
+                transcription = recognizer.recognize_google(audio_data, language="ja-JP")
+                print(f"Recognized: {transcription}")
+        except sr.UnknownValueError:
+            transcription = "Could not understand audio"
+        except sr.RequestError as e:
+            transcription = f"API Error: {e}"
 
         # Run analysis
         showPitchOnGraph(*temp_wav)
