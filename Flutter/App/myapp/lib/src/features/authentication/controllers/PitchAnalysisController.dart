@@ -25,7 +25,7 @@ class PitchAnalysisController {
    * @return A [Future] that resolves to [Uint8List] containing the PNG image data if successful,
    *         or null if the request fails or an error occurs.
    */
-  Future<Uint8List?> analyzeAudio({XFile? audioFile, String? audioPath}) async {
+  Future<PitchAnalysisResult?> analyzeAudio({XFile? audioFile, String? audioPath}) async {
     try {
       final Uri uri = Uri.parse(_apiUrl);
       final http.MultipartRequest request = http.MultipartRequest('POST', uri);
@@ -76,16 +76,32 @@ class PitchAnalysisController {
         }
       }
 
-      // 2. Attach Native Speaker Audio (for future use))
+      // Attach Native Speaker Audio (for future use))
 
 
-      // 3. Execute the Request
-      final http.StreamedResponse response = await request.send();
+      // Execute the Request
+      final http.StreamedResponse streamedResponse = await request.send(); // Changed name from 'response' to 'streamedResponse'
+
+      // Convert StreamedResponse to Response
+      final http.Response response = await http.Response.fromStream(streamedResponse);
 
       // 4. Handle Response
       if (response.statusCode == 200) {
+        // Extract Headers (Note: Headers are typically lowercase in Dart http)
+        String rawKanji = response.headers['x-transcription'] ?? "";
+        String rawRomaji = response.headers['x-transcription-romaji'] ?? "";
+
+        // Decode URL-encoded strings (e.g., "%E7%8C%AB" -> "猫")
+        String decodedKanji = Uri.decodeComponent(rawKanji);
+        String decodedRomaji = Uri.decodeComponent(rawRomaji);
+
         // The server returns a raw PNG image. Convert the stream to bytes for display.
-        return await response.stream.toBytes();
+        // The server returns a raw PNG image. Convert the stream to bytes for display.
+        return PitchAnalysisResult(
+          imageBytes: response.bodyBytes,
+          kanji: decodedKanji,
+          romaji: decodedRomaji,
+        );
       } else {
         print("Server Error: HTTP status code ${response.statusCode}");
         return null;
@@ -96,4 +112,18 @@ class PitchAnalysisController {
       return null;
     }
   }
+}
+
+/// A data model to encapsulate the response from the pitch analysis API.
+/// This includes the visual graph and the linguistic transcription data.
+class PitchAnalysisResult {
+  final Uint8List imageBytes;
+  final String kanji;
+  final String romaji;
+
+  PitchAnalysisResult({
+    required this.imageBytes,
+    required this.kanji,
+    required this.romaji,
+  });
 }

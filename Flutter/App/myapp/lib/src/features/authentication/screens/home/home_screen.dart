@@ -34,6 +34,9 @@ class _HomeScreenState extends State<HomeScreen> {
   final AudioRecorder _audioRecorder = AudioRecorder();
   final AudioPlayer _userAudioPlayer = AudioPlayer();
 
+  // Init analysis controller
+  final PitchAnalysisController _pitchController = PitchAnalysisController();
+
   int _currentIndex = 0;
   late Future<List<AnkiCardModel>> _cardsFuture;
 
@@ -45,14 +48,11 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isHoveringDropZone = false;
   XFile? _droppedFile;
 
-  // init audio recorder
-  final PitchAnalysisController _pitchController = PitchAnalysisController();
-
-  // Variable to store the image result for later
+  // -- Analysis Result State --
   Uint8List? _graphImage;
-  bool _isAnalyzing = false; // To show a loading spinner while waiting for the server
-
-
+  String _detectedKanji = "";
+  String _detectedRomaji = "";
+  bool _isAnalyzing = false;
 
   /******************** CYCLE METHODS *******************/
   @override
@@ -69,10 +69,9 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  /******************** FILE PICKER LOGIC (CLICK) *******************/
+  /******************** FILE PICKER LOGIC *******************/
   Future<void> _pickFile() async {
     try {
-      // Open the file picker
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.audio,
         allowMultiple: false,
@@ -84,17 +83,13 @@ class _HomeScreenState extends State<HomeScreen> {
         XFile pickedFile;
 
         if (kIsWeb) {
-          // Web Logic: strictly use bytes
-          // check if bytes are available to avoid the crash
           if (file.bytes != null) {
             pickedFile = XFile.fromData(file.bytes!, name: file.name);
           } else {
-            print(
-                "Error: The browser didn't give us the file data! (Bytes are null)");
+            print("Error: The browser didn't give us the file data!");
             return;
           }
         } else {
-          // Mobile/Desktop Logic: strictly use path
           if (file.path != null) {
             pickedFile = XFile(file.path!);
           } else {
@@ -103,10 +98,13 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
 
-        // update the UI
         setState(() {
           _droppedFile = pickedFile;
           _userRecordingPath = null;
+          // Reset analysis results
+          _graphImage = null;
+          _detectedKanji = "";
+          _detectedRomaji = "";
         });
         print("File picked successfully: ${_droppedFile!.name}");
       }
@@ -117,19 +115,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /******************** RECORDER LOGIC *******************/
   Future<void> _startRecording() async {
-    setState(() => _droppedFile = null); // Clear file if we start recording
+    setState(() {
+      _droppedFile = null;
+      _graphImage = null;
+      _detectedKanji = "";
+      _detectedRomaji = "";
+    });
 
     try {
       if (await _audioRecorder.hasPermission()) {
         if (kIsWeb) {
-          await _audioRecorder
-              .start(const RecordConfig(encoder: AudioEncoder.opus), path: '');
+          await _audioRecorder.start(
+              const RecordConfig(encoder: AudioEncoder.opus),
+              path: ''
+          );
         } else {
           final dir = await getTemporaryDirectory();
           String path = '${dir.path}/user_practice.m4a';
           await _audioRecorder.start(
               const RecordConfig(encoder: AudioEncoder.aacLc),
-              path: path);
+              path: path
+          );
         }
 
         setState(() {
@@ -158,14 +164,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _playUserContent() async {
     try {
       if (_droppedFile != null) {
-        // Play the dropped/picked file
         if (kIsWeb) {
           await _userAudioPlayer.play(UrlSource(_droppedFile!.path));
         } else {
           await _userAudioPlayer.play(DeviceFileSource(_droppedFile!.path));
         }
       } else if (_userRecordingPath != null) {
-        // Play the mic recording
         Source source = (kIsWeb)
             ? UrlSource(_userRecordingPath!)
             : DeviceFileSource(_userRecordingPath!);
@@ -176,11 +180,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /******************** ANALYSIS LOGIC *******************/
-
-  // Sends the current audio to the server and updates the UI with the result
-  Future<void> _runAnalysis() async {
-    // 1. Validation: Ensure we actually have audio to send
+  /******************** GRAPH & TEXT LOGIC *******************/
+  Future<void> _generateGraph() async {
+    // Validation
     if (_droppedFile == null && _userRecordingPath == null) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Please record or upload audio first."))
@@ -189,41 +191,34 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     setState(() {
-      _isAnalyzing = true; // Start loading spinner
-      _graphImage = null;  // Clear previous graph
+      _isAnalyzing = true;
+      _graphImage = null; // Clear previous
+      _detectedKanji = "";
+      _detectedRomaji = "";
     });
 
-    // 2. Call the Controller
-    final Uint8List? result = await _pitchController.analyzeAudio(
+    // Call the controller (Returns PitchAnalysisResult object)
+    final PitchAnalysisResult? result = await _pitchController.analyzeAudio(
         audioFile: _droppedFile,
         audioPath: _userRecordingPath
     );
 
-    // 3. Update UI
     setState(() {
-      _isAnalyzing = false; // Stop loading
+      _isAnalyzing = false;
+
       if (result != null) {
-        _graphImage = result; // Display the graph
+        // Unpack the data from the Result Object
+        _graphImage = result.imageBytes;
+        _detectedKanji = result.kanji;
+        _detectedRomaji = result.romaji;
+
+        print("DETECTED WORDS $_detectedKanji $_detectedRomaji" );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Analysis failed. Please Check server connection."))
+            const SnackBar(content: Text("Analysis failed. Check server."))
         );
       }
     });
-  }
-
-  /******************** GRAPH LOGIC *******************/
-  Future<void> _generateGraph() async {
-    // Call the controller to generate the graph
-    // pass _droppedFile (for drag/drop/web) AND _userRecordingPath (for mobile mic)
-    final result = await _pitchController.analyzeAudio(
-        audioFile: _droppedFile, audioPath: _userRecordingPath);
-
-    if (result != null) {
-      setState(() {
-        _graphImage = result; // Save the image data to display
-      });
-    }
   }
 
   /******************** CARD LOGIC *******************/
@@ -232,7 +227,10 @@ class _HomeScreenState extends State<HomeScreen> {
       _userRecordingPath = null;
       _droppedFile = null;
       _isRecording = false;
-      _graphImage = null; // Clear the graph for the new word.
+      // Clear analysis
+      _graphImage = null;
+      _detectedKanji = "";
+      _detectedRomaji = "";
 
       if (_currentIndex < totalCards - 1) {
         _currentIndex++;
@@ -281,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: const TextStyle(color: Colors.grey)),
                       const SizedBox(height: 10),
 
-                      // --- MAIN CARD ---
+                      // --- MAIN CARD AREA ---
                       Expanded(
                         child: Center(
                           child: SingleChildScrollView(
@@ -290,8 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 WordCard(
                                   card: currentCard,
                                   onPlayAudio: () =>
-                                      _nativeAudioPlayer.play(
-                                          currentCard.wordAudio),
+                                      _nativeAudioPlayer.play(currentCard.wordAudio),
                                 ),
 
                                 const SizedBox(height: 20),
@@ -300,107 +297,67 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    // MIC BUTTON
+                                    // Mic Button
                                     GestureDetector(
                                       onLongPress: _startRecording,
                                       onLongPressUp: _stopRecording,
-                                      onTap: () =>
-                                      _isRecording
-                                          ? _stopRecording()
-                                          : _startRecording(),
+                                      onTap: () => _isRecording ? _stopRecording() : _startRecording(),
                                       child: Container(
                                         padding: const EdgeInsets.all(15),
                                         decoration: BoxDecoration(
-                                          color: _isRecording
-                                              ? Colors.red
-                                              : Colors.white,
+                                          color: _isRecording ? Colors.red : Colors.white,
                                           shape: BoxShape.circle,
                                           boxShadow: [
-                                            BoxShadow(color: Colors.grey
-                                                .withOpacity(0.3),
-                                                blurRadius: 10)
+                                            BoxShadow(color: Colors.grey.withOpacity(0.3), blurRadius: 10)
                                           ],
                                         ),
-                                        child: Icon(
-                                            _isRecording ? Icons.stop : Icons
-                                                .mic, color: _isRecording
-                                            ? Colors.white
-                                            : tPrimaryColor, size: 30),
+                                        child: Icon(_isRecording ? Icons.stop : Icons.mic, color: _isRecording ? Colors.white : tPrimaryColor, size: 30),
                                       ),
                                     ),
 
                                     const SizedBox(width: 20),
 
-                                    // DROP ZONE / UPLOAD BUTTON
+                                    // Upload Button
                                     DropTarget(
                                       onDragDone: (details) {
                                         if (details.files.isNotEmpty) {
                                           setState(() {
-                                            _droppedFile =
-                                                details.files.first;
+                                            _droppedFile = details.files.first;
                                             _userRecordingPath = null;
                                             _graphImage = null;
+                                            _detectedKanji = "";
+                                            _detectedRomaji = "";
                                           });
                                         }
                                       },
-                                      onDragEntered: (details) =>
-                                          setState(() =>
-                                          _isHoveringDropZone = true),
-                                      onDragExited: (details) =>
-                                          setState(() =>
-                                          _isHoveringDropZone = false),
+                                      onDragEntered: (details) => setState(() => _isHoveringDropZone = true),
+                                      onDragExited: (details) => setState(() => _isHoveringDropZone = false),
 
-                                      // CLICKABLE AREA
                                       child: InkWell(
                                         onTap: _pickFile,
-                                        borderRadius: BorderRadius.circular(
-                                            50),
+                                        borderRadius: BorderRadius.circular(50),
                                         child: Container(
                                           width: 60,
                                           height: 60,
                                           decoration: BoxDecoration(
-                                            color: _isHoveringDropZone
-                                                ? Colors.blue.shade100
-                                                : (_droppedFile != null
-                                                ? Colors.green.shade100
-                                                : Colors.white),
+                                            color: _isHoveringDropZone ? Colors.blue.shade100 : (_droppedFile != null ? Colors.green.shade100 : Colors.white),
                                             shape: BoxShape.circle,
-                                            border: _isHoveringDropZone
-                                                ? Border.all(
-                                                color: Colors.blue, width: 2)
-                                                : null,
-                                            boxShadow: [
-                                              BoxShadow(color: Colors.grey
-                                                  .withOpacity(0.3),
-                                                  blurRadius: 10)
-                                            ],
+                                            border: _isHoveringDropZone ? Border.all(color: Colors.blue, width: 2) : null,
+                                            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.3), blurRadius: 10)],
                                           ),
-                                          // generic upload icon
-                                          child: Icon(
-                                            _droppedFile != null
-                                                ? Icons.check
-                                                : Icons.upload,
-                                            color: _droppedFile != null
-                                                ? Colors.green
-                                                : Colors.grey,
-                                            size: 28,
-                                          ),
+                                          child: Icon(_droppedFile != null ? Icons.check : Icons.upload, color: _droppedFile != null ? Colors.green : Colors.grey, size: 28),
                                         ),
                                       ),
                                     ),
 
                                     const SizedBox(width: 20),
 
-                                    // 3. PLAYBACK BUTTON
-                                    if ((_userRecordingPath != null ||
-                                        _droppedFile != null) &&
-                                        !_isRecording)
+                                    // Playback
+                                    if ((_userRecordingPath != null || _droppedFile != null) && !_isRecording)
                                       ElevatedButton.icon(
                                         onPressed: _playUserContent,
                                         icon: const Icon(Icons.play_arrow),
-                                        label: Text(_droppedFile != null
-                                            ? "Play File"
-                                            : "Play Rec"),
+                                        label: Text(_droppedFile != null ? "Play File" : "Play Rec"),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.grey[200],
                                           foregroundColor: Colors.black,
@@ -411,32 +368,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                 // Instructions
                                 if (_isRecording)
-                                  const Padding(
-                                      padding: EdgeInsets.only(top: 10),
-                                      child: Text("Recording...",
-                                          style: TextStyle(
-                                              color: Colors.red)))
+                                  const Padding(padding: EdgeInsets.only(top: 10), child: Text("Recording...", style: TextStyle(color: Colors.red)))
+                                else if (_droppedFile != null)
+                                  Padding(padding: const EdgeInsets.only(top: 10), child: Text("Ready: ${_droppedFile!.name}", style: const TextStyle(color: Colors.green, fontSize: 12)))
                                 else
-                                  if (_droppedFile != null)
-                                    Padding(padding: const EdgeInsets.only(
-                                        top: 10),
-                                        child: Text(
-                                            "Ready: ${_droppedFile!.name}",
-                                            style: const TextStyle(
-                                                color: Colors.green,
-                                                fontSize: 12)))
-                                  else
-                                    const Padding(
-                                        padding: EdgeInsets.only(top: 10),
-                                        child: Text("Tap Mic or Upload Audio",
-                                            style: TextStyle(
-                                                color: Colors.grey,
-                                                fontSize: 12))),
+                                  const Padding(padding: EdgeInsets.only(top: 10), child: Text("Tap Mic or Upload Audio", style: TextStyle(color: Colors.grey, fontSize: 12))),
 
                                 const SizedBox(height: 20),
 
                                 /*----------------- ANALYZE SECTION -----------------*/
-                                // Only show if audio is present and not recording
                                 if ((_userRecordingPath != null || _droppedFile != null) && !_isRecording)
                                   SizedBox(
                                     width: double.infinity,
@@ -454,22 +394,48 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                 const SizedBox(height: 20),
 
-                                /*----------------- RESULT GRAPH -----------------*/
+                                /*----------------- RESULT GRAPH & TEXT -----------------*/
                                 if (_graphImage != null)
-                                  Container(
-                                    height: 800,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.grey.shade300),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Image.memory(
-                                        _graphImage!,
-                                        fit: BoxFit.contain,
+                                  Column(
+                                    children: [
+                                      // Graph Image
+                                      Container(
+                                        height: 400,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          border: Border.all(color: Colors.grey.shade300),
+                                          borderRadius: BorderRadius.circular(10),
+                                          color: Colors.white,
+                                        ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: Image.memory(
+                                            _graphImage!,
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+
+                                      const SizedBox(height: 15),
+
+                                      // Transcription Text using google speech to text
+                                      Text(
+                                        "Detected: $_detectedRomaji",
+                                        style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blueAccent
+                                        ),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        _detectedKanji,
+                                        style: const TextStyle(
+                                            fontSize: 32, // Size
+                                            fontWeight: FontWeight.bold
+                                        ),
+                                      ),
+                                    ],
                                   ),
                               ],
                             ),
@@ -487,11 +453,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: () => _nextCard(cards.length),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: tPrimaryColor,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
-                          child: const Text("Next Word", style: TextStyle(
-                              fontSize: 18, color: Colors.white)),
+                          child: const Text("Next Word", style: TextStyle(fontSize: 18, color: Colors.white)),
                         ),
                       ),
                     ],
