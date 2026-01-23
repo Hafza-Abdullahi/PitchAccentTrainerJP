@@ -7,3 +7,4 @@ praat-parselmouth
 gunicorn
 pydub
 SpeechRecognition
+pykakasi

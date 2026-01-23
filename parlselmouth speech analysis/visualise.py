@@ -30,10 +30,12 @@ from pydub import AudioSegment
 
 # googles speech recogn 
 import speech_recognition as sr 
-# Needed for parsing url
+# for japanese kanji to romaji
+import pykakasi
+# for parsing urls 
 import urllib.parse 
 
-matplotlib.use('Agg')  #disable qt5gg for the server
+matplotlib.use('Agg')
 
 app = Flask(__name__)
 # This allows your Flutter app from ANY URL to talk to this server
@@ -71,7 +73,7 @@ def showPitchOnGraph(audio_path, word_label="Unknown"):
 
         # Plot
         plt.plot(times, frequencies, label=f"{label} - Original", alpha=0.3, linewidth=1, color=line_colour)
-        #plt.plot(times, average_smoothed, label=f"{label} - Average", linewidth=2, color=colors[i])
+        #plt.plot(times, average_smoothed, label=f"{label} - Average", linewidth=2, color=line_colour)
 
     except Exception as e:
         print(f"Error processing {audio_path}: {e}")
@@ -150,8 +152,22 @@ def process_audio():
             transcription = f"API Error: {e}"
 
         
+        # Convert to romaji 
+        romaji = ""
+        try:
+            kks = pykakasi.kakasi()
+            result = kks.convert(transcription)
+            # Join the 'hepburn' reading of each word
+            romaji = " ".join([item['hepburn'] for item in result])
+            print(f"Romaji: {romaji}")
+        except Exception as e:
+            print(f"Romaji Error: {e}")
+            romaji = "Error"
+
+        
         # Run analysis
-        showPitchOnGraph(temp_wav, transcription)
+        combined_label  = f"{romaji} : {transcription}"
+        showPitchOnGraph(temp_wav, combined_label)
 
         img_buffer = io.BytesIO()
         plt.savefig(img_buffer, format="png", dpi=150)
@@ -163,9 +179,8 @@ def process_audio():
 
         # URL Encode the Japanese text so headers don't break
         # Example: '猫' becomes '%E7%8C%AB'
-        safe_header = urllib.parse.quote(transcription)
-        response.headers["X-Transcription"] = safe_header
-
+        response.headers["X-Transcription"] = urllib.parse.quote(transcription)
+        response.headers["X-Transcription-Romaji"] = urllib.parse.quote(romaji)
         
         return response
 
@@ -177,6 +192,7 @@ def process_audio():
         # Cleanup
         if temp_webm and os.path.exists(temp_webm): os.remove(temp_webm)
         if temp_wav and os.path.exists(temp_wav): os.remove(temp_wav)
+        
 
 if __name__ == "__main__":
     # Render provides the PORT variable
