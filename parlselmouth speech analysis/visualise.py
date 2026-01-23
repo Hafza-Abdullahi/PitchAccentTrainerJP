@@ -28,9 +28,8 @@ import tempfile
 # converting webM  to wav for site
 from pydub import AudioSegment
 
-# Text to speech
-import whisper 
-import pykakasi # for converting jp Kanji to eng alphabet (romaji)
+# googles speech recogn 
+import speech_recognition as sr 
 
 matplotlib.use('Agg')  #disable qt5gg for the server
 # global instance of the word
@@ -97,71 +96,66 @@ def process_audio():
     if "files" not in request.files:
         return jsonify({"error": "No audio files uploaded"}), 400
 
-    files = request.files.getlist("files")
+    # Grab the audio file
+    file = request.files.getlist("files")[0]
 
-    # Save all uploaded audio files to the system's temporary directory
-    temp_files = []
-    converted_files = []
+    # Save audio temporarily for before and after conversion
+    temp_webm = None
+    temp_wav = None
 
     try:
-        for f in files:
+        for f in file:
             # delete=False so parselmouth can open it by path
-            suffix = os.path.splitext(f.filename)[1] or ".webm"
+            suffix = os.path.splitext(file.filename)[1] or ".webm"
             t = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-            f.save(t.name)
-            t.close() # Close so other processes can read it
-            temp_files.append(t.name)
+            file.save(t.name)
+            t.close()
+            temp_webm = t.name
 
             # CONVERT TO WAV using FFmpeg
             # This turns the WebM into a standard WAV
-            wav_path = t.name + ".wav"
+            temp_wav = t.name + ".wav"
+            audio = AudioSegment.from_file(temp_webm)
+            audio.export(temp_wav, format="wav")
+
+            # Google Transcription 
+            recognizer = sr.Recognizer()
+            transcription = ""
+
             try:
-                audio = AudioSegment.from_file(t.name)
-                audio.export(wav_path, format="wav")
-                converted_files.append(wav_path)
-            except Exception as conv_err:
-                print(f"Conversion failed for {f.filename}: {conv_err}")
-                # If conversion fails, try using the original (fallback)
-                converted_files.append(t.name)
-
-        # Text to speech using openAI whisper lib
-        # Load model and audio
-        model = whisper.load_model("base")
-        temp_audio = converted_files[0] 
-        result = model.transcribe(temp_audio, fp16=False)
-        japanese_text = result["text"]
-
-        # convert kanji to romaji
-        kks = pykakasi.kakasi()
-        converted = kks.convert(japanese_text)
-
-        # Extract romaji
-        for item in converted:
-            current_word += item['hepburn'] + " " # 'hepburn' is the standard romaji style
-
-        #final clean romaji
-        current_word = current_word.strip()
+                with sr.AudioFile(temp_wav) as source:
+                    audio_data = recognizer.record(source)
+                    # 'ja-JP' tells Google to listen for Japanese
+                    transcription = recognizer.recognize_google(audio_data, language="ja-JP")
+                    print(f"Recognized: {transcription}")
+            except sr.UnknownValueError:
+                transcription = "Could not understand audio"
+            except sr.RequestError as e:
+                transcription = f"API Error: {e}"
 
         # Run analysis
-        showPitchOnGraph(*converted_files)
+        showPitchOnGraph(*temp_wav)
 
         img_buffer = io.BytesIO()
         plt.savefig(img_buffer, format="png", dpi=150)
         img_buffer.seek(0)
         plt.close()
 
-        # Cleanup temp files
-        for tf in temp_files:
-            try:
-                os.remove(tf)
-            except:
-                pass
+        # Send respone back in url
+        response = send_file(img_buffer, mimetype="image/png")
+        # Url encoded to accept jp characters
+        response.headers["X-Transcription"] = str(transcription.encode('utf-8'))
 
-        return send_file(img_buffer, mimetype="image/png")
+        return response
 
     except Exception as e:
         print(f"Server Error: {e}")
         return jsonify({"error": str(e)}), 500
+    
+    finally:
+        # Cleanup
+        if temp_webm and os.path.exists(temp_webm): os.remove(temp_webm)
+        if temp_wav and os.path.exists(temp_wav): os.remove(temp_wav)
 
 if __name__ == "__main__":
     # Render provides the PORT variable

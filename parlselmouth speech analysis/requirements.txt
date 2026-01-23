@@ -6,5 +6,4 @@ matplotlib
 praat-parselmouth
 gunicorn
 pydub
-openai-whisper
-pykakasi
+SpeechRecognition
