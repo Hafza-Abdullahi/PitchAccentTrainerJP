@@ -32,8 +32,11 @@ from pydub import AudioSegment
 import speech_recognition as sr 
 
 matplotlib.use('Agg')  #disable qt5gg for the server
+
 # global instance of the word
-current_word = ""
+current_word = "Default"
+
+
 app = Flask(__name__)
 # This allows your Flutter app from ANY URL to talk to this server
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -142,12 +145,14 @@ def process_audio():
                 audio_data = recognizer.record(source)
                 # 'ja-JP' tells Google to listen for Japanese
                 transcription = recognizer.recognize_google(audio_data, language="ja-JP")
+                current_word = transcription
                 print(f"Recognized: {transcription}")
         except sr.UnknownValueError:
             transcription = "Could not understand audio"
         except sr.RequestError as e:
             transcription = f"API Error: {e}"
 
+        
         # Run analysis
         showPitchOnGraph(temp_wav)
 
@@ -161,6 +166,7 @@ def process_audio():
         # Url encoded to accept jp characters
         response.headers["X-Transcription"] = str(transcription.encode('utf-8'))
 
+        
         return response
 
     except Exception as e:
