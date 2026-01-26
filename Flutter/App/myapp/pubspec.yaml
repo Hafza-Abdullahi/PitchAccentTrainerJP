@@ -88,6 +88,7 @@ flutter:
     - assets/images/common_images/
     - assets/json/cards.json
     - assets/audio/
+    - assets/demo_audio/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

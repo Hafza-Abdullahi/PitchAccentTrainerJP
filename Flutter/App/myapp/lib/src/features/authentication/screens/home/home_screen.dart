@@ -19,6 +19,7 @@ import '../../../../repository/anki_repository/anki_repository.dart';
 import '../../../../utils/anki_audio_player.dart';
 import '../../controllers/PitchAnalysisController.dart';
 import '../../models/anki_card_model.dart';
+import 'package:flutter/services.dart'; // Needed for rootBundle
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -240,6 +241,39 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /******************** DEMO LOGIC *******************/
+  Future<void> _loadDemoFile(String fileName) async {
+    try {
+      // Load bytes from the asset bundle
+      final byteData = await rootBundle.load('assets/audio/$fileName');
+      final bytes = byteData.buffer.asUint8List();
+
+      // Create an XFile (Fake upload)
+      final demoFile = XFile.fromData(
+        bytes,
+        name: fileName,
+        length: bytes.length,
+      );
+
+      // Update State
+      setState(() {
+        _droppedFile = demoFile;
+        _userRecordingPath = null;
+        _graphImage = null; // Clear old graph
+        _detectedKanji = "";
+        _detectedRomaji = "";
+      });
+
+      print("Demo file loaded: $fileName");
+
+      // Optional: Auto-analyze immediately?
+      // _generateGraph();
+
+    } catch (e) {
+      print("Error loading demo asset: $e");
+    }
+  }
+
   /******************** UI BUILD *******************/
   @override
   Widget build(BuildContext context) {
@@ -458,6 +492,27 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: const Text("Next Word", style: TextStyle(fontSize: 18, color: Colors.white)),
                         ),
                       ),
+
+                      const SizedBox(height: 30),
+
+                      // --- DEMO SECTION ---
+                      const Divider(),
+                      const Text("Demo Mode", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const SizedBox(height: 10),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildDemoButton("watashi_female.mp3", "Watashi (female)"),
+                            const SizedBox(width: 10),
+                            _buildDemoButton("watashi_male.mp3", "watashi (male)"),
+                            const SizedBox(width: 10),
+                            _buildDemoButton("watashi_wrong.mp3", "watashi (wrong pitch)"),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 );
@@ -468,4 +523,17 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Widget _buildDemoButton(String fileName, String label) {
+    return OutlinedButton.icon(
+      onPressed: () => _loadDemoFile(fileName),
+      icon: const Icon(Icons.science, size: 16),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.purple,
+        side: const BorderSide(color: Colors.purple),
+      ),
+    );
+  }
 }
+
