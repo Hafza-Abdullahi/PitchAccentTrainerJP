@@ -25,6 +25,19 @@ class PitchAnalysisController {
    * @return A [Future] that resolves to [Uint8List] containing the PNG image data if successful,
    *         or null if the request fails or an error occurs.
    */
+
+  /// ****************** Server wake up ping ******************
+  Future<void> wakeUpServer() async {
+    try {
+      // ping the root "/" because it's lightweight
+      final baseUrl = _apiUrl.replaceAll("/process-audio", "/"); // remove process audio to the get root url
+      await http.get(Uri.parse(baseUrl));
+      print("Server Woke Up!");
+    } catch (e) {
+      print("Server is sleeping or error: $e");
+    }
+  }
+
   Future<PitchAnalysisResult?> analyzeAudio({XFile? audioFile, String? audioPath}) async {
     try {
       final Uri uri = Uri.parse(_apiUrl);

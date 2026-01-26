@@ -60,6 +60,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _cardsFuture = _repository.loadLocalDeck();
+
+    // ping server to wake it up (Render free version shuts down server after inactivity,
+    // first request to anyzle will be delayed by 50secs. so waking it up now while everything is loading is better)
+    _pitchController.wakeUpServer();
   }
 
   @override
@@ -69,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _audioRecorder.dispose();
     super.dispose();
   }
+
 
   /******************** FILE PICKER LOGIC *******************/
   Future<void> _pickFile() async {
