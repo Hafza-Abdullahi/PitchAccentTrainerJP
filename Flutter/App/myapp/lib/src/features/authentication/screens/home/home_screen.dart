@@ -245,7 +245,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadDemoFile(String fileName) async {
     try {
       // Load bytes from the asset bundle
-      final byteData = await rootBundle.load('assets/audio/$fileName');
+      final byteData = await rootBundle.load('assets/demo_audio/$fileName');
       final bytes = byteData.buffer.asUint8List();
 
       // Create an XFile (Fake upload)
