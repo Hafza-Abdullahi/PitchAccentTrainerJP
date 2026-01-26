@@ -88,8 +88,8 @@ class PitchAnalysisController {
       // 4. Handle Response
       if (response.statusCode == 200) {
         // Extract Headers (Note: Headers are typically lowercase in Dart http)
-        String rawKanji = response.headers['x-transcription'] ?? "";
-        String rawRomaji = response.headers['x-transcription-romaji'] ?? "";
+        String rawKanji = response.headers['x-transcription'] ?? "No Data";
+        String rawRomaji = response.headers['x-transcription-romaji'] ?? "No Data";
 
         // Decode URL-encoded strings (e.g., "%E7%8C%AB" -> "猫")
         String decodedKanji = Uri.decodeComponent(rawKanji);
