@@ -4,7 +4,7 @@
 
 -----
 
-## The Problem: The Ignored Half of Japanese
+## The Problem: The Ignored Part of Japanese
 
 Most language learning apps (and learners) completely overlook Japanese pitch accent. Japanese isn't a tonal language like Mandarin, but it uses a high/low pitch system where the melody of a word changes its entire meaning. For example, *Hashi* can mean "Bridge" or "Chopsticks" entirely depending on where your pitch drops.
 
