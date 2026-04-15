@@ -7,7 +7,7 @@ import pykakasi
 kks = pykakasi.kakasi()
 
 # Setup folders and headers
-save_directory = "./ojad_audio/"
+save_directory = "./bulk_ojad_audio/"
 # Create the directory for the files
 os.makedirs(save_directory, exist_ok=True)
 
@@ -25,7 +25,7 @@ headers = {
 # Odaka Pitch pattern is the same as heiban UNTIL a particle is added to the word
 # since the model and flashcards will always be words in isolation, Odaka never pops up
 # so including this pattern will confuse the model
-TARGET_FILES_PER_PITCH = 100
+TARGET_FILES_PER_PITCH = 300
 pitch_counters = {
     "Heiban": 0,
     "Atamadaka": 0,
@@ -76,7 +76,7 @@ def get_romaji_name(clean_japanese_text):
 
 
 # Main Scraping Target
-for page_num in range(1, 150):
+for page_num in range(1, 600):
     print(f"\n=============================")
     print(f" SCRAPING PAGE {page_num} ")
     print(f" QUOTA STATUS: {pitch_counters}")
@@ -84,10 +84,10 @@ for page_num in range(1, 150):
     
     # Check if all pitch samples are already collected, before scraping the page
     if all(count >= TARGET_FILES_PER_PITCH for count in pitch_counters.values()):
-        print("\nCompleted: 100 files collected for all pitch categories!")
-        break # exits the 150-page loop
+        print("\nCompleted: 300 files collected for all pitch categories!")
+        break # exits the 600-page loop
 
-    url = f"http://www.gavo.t.u-tokyo.ac.jp/ojad/search/index/limit:100/page:{page_num}"
+    url = f"http://www.gavo.t.u-tokyo.ac.jp/ojad/search/index/limit:300/page:{page_num}"
     response = requests.get(url, headers=headers)
     soup = BeautifulSoup(response.content, 'html.parser')
 
