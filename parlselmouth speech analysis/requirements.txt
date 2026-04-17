@@ -8,3 +8,4 @@ gunicorn
 pydub
 SpeechRecognition
 pykakasi
+librosa

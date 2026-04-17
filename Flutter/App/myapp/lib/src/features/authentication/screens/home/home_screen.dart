@@ -12,7 +12,7 @@ import 'package:audioplayers/audioplayers.dart';
 // --- PACKAGES ---
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:cross_file/cross_file.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart' as fp;
 
 import '../../../../common_widgets/card/word_card.dart';
 import '../../../../repository/anki_repository/anki_repository.dart';
@@ -79,14 +79,15 @@ class _HomeScreenState extends State<HomeScreen> {
   /******************** FILE PICKER LOGIC *******************/
   Future<void> _pickFile() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.audio,
+      // Add .platform back here
+      fp.FilePickerResult? result = await fp.FilePicker.platform.pickFiles(
+        type: fp.FileType.audio,
         allowMultiple: false,
         withData: true,
       );
 
       if (result != null) {
-        PlatformFile file = result.files.first;
+        fp.PlatformFile file = result.files.first;
         XFile pickedFile;
 
         if (kIsWeb) {

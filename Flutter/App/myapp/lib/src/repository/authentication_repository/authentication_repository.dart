@@ -1,10 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:google_sign_in/google_sign_in.dart' as gis;
 import 'package:myapp/src/features/authentication/exceptions/login_email_password_failure.dart';
-import 'package:myapp/src/features/authentication/screens/home/home_screen.dart';
-import 'package:myapp/src/features/authentication/screens/welcome/welcome_screen.dart';
+
 
 
 //firebase class
@@ -47,29 +45,32 @@ class AuthenticationRepository extends GetxController {
 //returns user creds
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      // Create Google sign-in instance
-      final GoogleSignIn googleSignIn = GoogleSignIn();
+      // 1. FIX: Capital 'G' for the constructor GoogleSignIn()
+      final gis.GoogleSignIn googleSignIn = gis.GoogleSignIn();
 
-      // Show Google popup
-      final GoogleSignInAccount? userAccount = await googleSignIn.signIn();
-      if (userAccount == null) return null; // user cancelled
+      // 2. Show Google popup
+      final gis.GoogleSignInAccount? userAccount = await googleSignIn.signIn();
 
-      // Get Google authentication
-      final GoogleSignInAuthentication googleAuth = await userAccount.authentication;
+      // If user cancelled, return null
+      if (userAccount == null) return null;
 
-      // Create Firebase credential
+      // 3. Get Google authentication
+      final gis.GoogleSignInAuthentication googleAuth = await userAccount.authentication;
+
+      // 4. FIX: You were missing the line that actually creates the "credentials" variable
       final OAuthCredential credentials = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
         accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
 
-      // Sign in to Firebase with the credential
+      // 5. Sign in to Firebase with the credential
       return await _auth.signInWithCredential(credentials);
 
     } on FirebaseAuthException catch (e) {
       final ex = LoginWithEmailAndPasswordFailure.code(e.code);
       throw ex.message;
-    } catch (_) {
+    } catch (e) {
+      print("Error during Google Sign-In: $e");
       const ex = LoginWithEmailAndPasswordFailure();
       throw ex.message;
     }
