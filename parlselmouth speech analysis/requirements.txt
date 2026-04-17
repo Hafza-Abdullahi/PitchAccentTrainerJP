@@ -1,11 +1,12 @@
 flask
 flask-cors
+gunicorn
 numpy
 scipy
 matplotlib
 praat-parselmouth
-gunicorn
 pydub
 SpeechRecognition
 pykakasi
 librosa
+tensorflow-cpu
