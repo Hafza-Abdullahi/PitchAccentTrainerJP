@@ -91,10 +91,21 @@ class PitchAnalysisController {
 
       // Attach Native Speaker Audio (for future use))
       if (nativeAudioPath != null && nativeAudioPath.isNotEmpty) {
-        request.files.add(await http.MultipartFile.fromPath(
-            'native_audio',
-            nativeAudioPath
-        ));
+        if (kIsWeb) {
+          // Download the bytes of the native audio first because fromPath is unsupported on web
+          final http.Response nativeRes = await http.get(Uri.parse(nativeAudioPath));
+          request.files.add(http.MultipartFile.fromBytes(
+              'native_audio',
+              nativeRes.bodyBytes,
+              filename: 'native_audio.mp3'
+          ));
+        } else {
+          // Mobile/Desktop can use the path directly
+          request.files.add(await http.MultipartFile.fromPath(
+              'native_audio',
+              nativeAudioPath
+          ));
+        }
       }
 
       // Execute the Request
