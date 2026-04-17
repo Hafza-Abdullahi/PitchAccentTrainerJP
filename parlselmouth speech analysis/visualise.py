@@ -28,6 +28,11 @@ import tempfile
 # converting webM  to wav for site
 from pydub import AudioSegment
 
+# Ai model
+import librosa
+import tensorflow as tf
+from tensorflow.keras.models import load_model
+
 # googles speech recogn 
 import speech_recognition as sr 
 # for japanese kanji to romaji
@@ -44,7 +49,16 @@ plt.rcParams['font.family'] = ['Noto Sans CJK JP', 'sans-serif']
 
 app = Flask(__name__)
 # This allows your Flutter app from ANY URL to talk to this server
-CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers=["X-Transcription", "X-Transcription-Romaji"])
+ORS(app, resources={r"/*": {"origins": "*"}}, expose_headers=["X-Transcription", "X-Transcription-Romaji", "X-AI-Score"])
+
+# Load Siamese Machine Learning Model for Audio Comparision
+try:
+    print("Loading Pitch Accent AI...")
+    siamese_model = load_model("pitch_accent_model_final.h5")
+    print("Model loaded successfully!")
+except Exception as e:
+    print(f"Error loading model (AI grading disabled): {e}")
+    siamese_model = None
 
 def moving_average(data, window_size):
     return np.convolve(data, np.ones(window_size)/window_size, mode='same')

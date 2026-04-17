@@ -19,11 +19,11 @@ class PitchAnalysisController {
    * (Web vs. Mobile/Desktop).
    *
    * @param audioFile An [XFile] object representing a file selected via the file picker or drag-and-drop.
-   *                  Required for Web environments where file paths are inaccessible.
+   * Required for Web environments where file paths are inaccessible.
    * @param audioPath A [String] representing the absolute file path on the device's storage.
-   *                  Used primarily for recordings on mobile devices.
+   * Used primarily for recordings on mobile devices.
    * @return A [Future] that resolves to [Uint8List] containing the PNG image data if successful,
-   *         or null if the request fails or an error occurs.
+   * or null if the request fails or an error occurs.
    */
 
   /// ****************** Server wake up ping ******************
@@ -38,7 +38,7 @@ class PitchAnalysisController {
     }
   }
 
-  Future<PitchAnalysisResult?> analyzeAudio({XFile? audioFile, String? audioPath}) async {
+  Future<PitchAnalysisResult?> analyzeAudio({XFile? audioFile, String? audioPath, String? nativeAudioPath,}) async {
     try {
       final Uri uri = Uri.parse(_apiUrl);
       final http.MultipartRequest request = http.MultipartRequest('POST', uri);
@@ -70,7 +70,7 @@ class PitchAnalysisController {
           return null;
         }
 
-    } else {
+      } else {
         // In Mobile/Desktop environments, the file can be accessed directly via its path.
         if (audioPath != null) {
           request.files.add(await http.MultipartFile.fromPath(
@@ -90,7 +90,12 @@ class PitchAnalysisController {
       }
 
       // Attach Native Speaker Audio (for future use))
-
+      if (nativeAudioPath != null && nativeAudioPath.isNotEmpty) {
+        request.files.add(await http.MultipartFile.fromPath(
+            'native_audio',
+            nativeAudioPath
+        ));
+      }
 
       // Execute the Request
       final http.StreamedResponse streamedResponse = await request.send(); // Changed name from 'response' to 'streamedResponse'
@@ -103,17 +108,19 @@ class PitchAnalysisController {
         // Extract Headers (Note: Headers are typically lowercase in Dart http)
         String rawKanji = response.headers['x-transcription'] ?? "No Data";
         String rawRomaji = response.headers['x-transcription-romaji'] ?? "No Data";
+        String rawAiScore = response.headers['x-ai-score'] ?? ""; //
 
         // Decode URL-encoded strings (e.g., "%E7%8C%AB" -> "猫")
         String decodedKanji = Uri.decodeComponent(rawKanji);
         String decodedRomaji = Uri.decodeComponent(rawRomaji);
+        String decodedAiScore = Uri.decodeComponent(rawAiScore);
 
-        // The server returns a raw PNG image. Convert the stream to bytes for display.
         // The server returns a raw PNG image. Convert the stream to bytes for display.
         return PitchAnalysisResult(
           imageBytes: response.bodyBytes,
           kanji: decodedKanji,
           romaji: decodedRomaji,
+          aiScore: decodedAiScore,
         );
       } else {
         print("Server Error: HTTP status code ${response.statusCode}");
@@ -133,10 +140,12 @@ class PitchAnalysisResult {
   final Uint8List imageBytes;
   final String kanji;
   final String romaji;
+  final String aiScore;
 
   PitchAnalysisResult({
     required this.imageBytes,
     required this.kanji,
     required this.romaji,
+    required this.aiScore,
   });
 }

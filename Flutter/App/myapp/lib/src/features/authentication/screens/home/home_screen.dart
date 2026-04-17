@@ -53,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Uint8List? _graphImage;
   String _detectedKanji = "";
   String _detectedRomaji = "";
+  String _aiScore = "";
   bool _isAnalyzing = false;
 
   /******************** CYCLE METHODS *******************/
@@ -111,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _graphImage = null;
           _detectedKanji = "";
           _detectedRomaji = "";
+          _aiScore = "";
         });
         print("File picked successfully: ${_droppedFile!.name}");
       }
@@ -126,6 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _graphImage = null;
       _detectedKanji = "";
       _detectedRomaji = "";
+      _aiScore = "";
     });
 
     try {
@@ -187,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /******************** GRAPH & TEXT LOGIC *******************/
-  Future<void> _generateGraph() async {
+  Future<void> _generateGraph(AnkiCardModel currentCard) async {
     // Validation
     if (_droppedFile == null && _userRecordingPath == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -201,13 +204,16 @@ class _HomeScreenState extends State<HomeScreen> {
       _graphImage = null; // Clear previous
       _detectedKanji = "";
       _detectedRomaji = "";
+      _aiScore = "";
     });
 
     // Call the controller (Returns PitchAnalysisResult object)
     final PitchAnalysisResult? result = await _pitchController.analyzeAudio(
-        audioFile: _droppedFile,
-        audioPath: _userRecordingPath
+      audioFile: _droppedFile,
+      audioPath: _userRecordingPath,
+      nativeAudioPath: currentCard.wordAudio,
     );
+    print("You scored: ${result?.aiScore}");
 
     setState(() {
       _isAnalyzing = false;
@@ -217,6 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _graphImage = result.imageBytes;
         _detectedKanji = result.kanji;
         _detectedRomaji = result.romaji;
+        _aiScore = result.aiScore;
 
         print("DETECTED WORDS $_detectedKanji $_detectedRomaji" );
       } else {
@@ -237,6 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _graphImage = null;
       _detectedKanji = "";
       _detectedRomaji = "";
+      _aiScore = "";
 
       if (_currentIndex < totalCards - 1) {
         _currentIndex++;
@@ -267,6 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _graphImage = null; // Clear old graph
         _detectedKanji = "";
         _detectedRomaji = "";
+        _aiScore = "";
       });
 
       print("Demo file loaded: $fileName");
@@ -366,6 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             _graphImage = null;
                                             _detectedKanji = "";
                                             _detectedRomaji = "";
+                                            _aiScore = "";
                                           });
                                         }
                                       },
@@ -420,7 +430,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   SizedBox(
                                     width: double.infinity,
                                     child: ElevatedButton(
-                                      onPressed: _isAnalyzing ? null : _generateGraph,
+                                      onPressed: _isAnalyzing ? null : () => _generateGraph(currentCard),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.purple,
                                         foregroundColor: Colors.white,
@@ -456,6 +466,28 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
 
                                       const SizedBox(height: 15),
+
+                                      // --- NEW GREEN AI SCORE BOX ---
+                                      if (_aiScore.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade50,
+                                            border: Border.all(color: Colors.green.shade400, width: 2),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            "AI Match Score: $_aiScore",
+                                            style: TextStyle(
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green.shade700,
+                                            ),
+                                          ),
+                                        ),
+
+                                      if (_aiScore.isNotEmpty) const SizedBox(height: 15),
+                                      // ------------------------------
 
                                       // Transcription Text using google speech to text
                                       Text(
@@ -541,4 +573,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
