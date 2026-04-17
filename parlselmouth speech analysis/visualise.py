@@ -49,7 +49,8 @@ plt.rcParams['font.family'] = ['Noto Sans CJK JP', 'sans-serif']
 
 app = Flask(__name__)
 # This allows your Flutter app from ANY URL to talk to this server
-ORS(app, resources={r"/*": {"origins": "*"}}, expose_headers=["X-Transcription", "X-Transcription-Romaji", "X-AI-Score"])
+
+CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers=["X-Transcription", "X-Transcription-Romaji", "X-AI-Score"])
 
 # Load Siamese Machine Learning Model for Audio Comparision
 try:
@@ -59,6 +60,28 @@ try:
 except Exception as e:
     print(f"Error loading model (AI grading disabled): {e}")
     siamese_model = None
+
+
+# Process Audio for Siamese model (convert audio to mel spectograms)
+def prepare_audio_for_ai(file_path, max_time_steps=100):
+    """Converts a WAV file into the 128x100 Mel-Spectrogram the AI expects."""
+    y, sr = librosa.load(file_path, sr=None)
+    # Crop to 500hz to focus on pitch changes
+    mel = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128, fmin=50, fmax=500)
+    mel_db = librosa.power_to_db(mel, ref=np.max)
+    
+    # Normalize 0 to 1
+    mel_min, mel_max = np.min(mel_db), np.max(mel_db)
+    mel_db = (mel_db - mel_min) / (mel_max - mel_min) if mel_max != mel_min else mel_db - mel_min
+    
+    # Pad or trim to exactly 100 frames
+    if mel_db.shape[1] < max_time_steps:
+        mel_db = np.pad(mel_db, pad_width=((0,0), (0, max_time_steps - mel_db.shape[1])), mode='constant')
+    else:
+        mel_db = mel_db[:, :max_time_steps]
+        
+    return mel_db.reshape(1, 128, max_time_steps, 1)
+
 
 def moving_average(data, window_size):
     return np.convolve(data, np.ones(window_size)/window_size, mode='same')
@@ -77,22 +100,12 @@ def showPitchOnGraph(audio_path, word_label="Unknown"):
         times = pitch.xs()
         frequencies = pitch.selected_array["frequency"]
 
-        #different smoothing algorithms,
-        #ma_smoothed = moving_average(frequencies, window_size=8)  # Moving Average
-        #gaussian_smoothed = gaussian_filter1d(frequencies, sigma=2)  # Gaussian Smoothing
-        #savgol_smoothed = savgol_filter(frequencies, window_length=11, polyorder=2)  # Savitzky-Golay
-        #average_smoothed = (ma_smoothed + gaussian_smoothed + savgol_smoothed) / 3
-
         # Basic plotting if smoothing fails or just simply plot
         label = audio_path.split('/')[-1]
         plt.plot(times, frequencies, label=f"{label}", linewidth=2, color=line_colour)
 
-        #Get filename for label
-        label = audio_path.split('/')[-1]  #just name
-
         # Plot
         plt.plot(times, frequencies, label=f"{label} - Original", alpha=0.3, linewidth=1, color=line_colour)
-        #plt.plot(times, average_smoothed, label=f"{label} - Average", linewidth=2, color=line_colour)
 
     except Exception as e:
         print(f"Error processing {audio_path}: {e}")
@@ -118,88 +131,93 @@ def process_audio():
         return jsonify({"error": "No audio files uploaded"}), 400
 
     # Grab the audio file
-    file = request.files.getlist("files")[0]
+    user_file = request.files.getlist("files")[0]
+    native_file = request.files.get("native_audio") # The anki Audio
     print("files recieved")
 
     # Save audio temporarily for before and after conversion
-    temp_webm = None
-    temp_wav = None
+    temp_user_webm = None
+    temp_user_wav = None
+    temp_native_mp3 = None
 
     try:
-        # save Upload
-        # delete=False so parselmouth can open it by path
-        suffix = os.path.splitext(file.filename)[1] or ".webm"
-        t = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        file.save(t.name)
-        t.close()
-        temp_webm = t.name
-
-        # check if file is empty 
-        file_size = os.path.getsize(temp_webm)
-        print(f"Received file: {temp_webm}, Size: {file_size} bytes")
+        # 1. Save and Convert User Audio
+        suffix = os.path.splitext(user_file.filename)[1] or ".webm"
+        t_user = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        user_file.save(t_user.name)
+        t_user.close()
+        temp_user_webm = t_user.name
 
         # CONVERT TO WAV using FFmpeg
-        # This turns the WebM into a standard WAV
-        temp_wav = t.name + ".wav"
-        
-        # Try converting 
+        temp_user_wav = t_user.name + ".wav"
         try:
-            audio = AudioSegment.from_file(temp_webm)
-            audio.export(temp_wav, format="wav")
+            audio = AudioSegment.from_file(temp_user_webm)
+            audio.export(temp_user_wav, format="wav")
         except Exception as conv_err:
             print(f"FFmpeg Conversion Failed: {conv_err}")
-            # If Flutter sent a WAV but named it WebM, try simple rename
-            if file_size > 0:
-                print("Attempting to use raw file...")
-                temp_wav = temp_webm 
-            else:
-                raise conv_err
+            # If conversion fails, fallback to using raw file
+            temp_user_wav = temp_user_webm 
 
-        # Google Transcription 
+        # 2. Save Native Audio (if provided by Flutter)
+        if native_file:
+            t_native = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            native_file.save(t_native.name)
+            t_native.close()
+            temp_native_mp3 = t_native.name
+
+        # 3. Google Transcription
         recognizer = sr.Recognizer()
         transcription = "Unknown"
-
         try:
-            with sr.AudioFile(temp_wav) as source:
+            with sr.AudioFile(temp_user_wav) as source:
                 audio_data = recognizer.record(source)
-                # 'ja-JP' tells Google to listen for Japanese
                 transcription = recognizer.recognize_google(audio_data, language="ja-JP")
-                print(f"Recognized: {transcription}")
-        except sr.UnknownValueError:
+        except:
             transcription = "Could not understand audio"
-        except sr.RequestError as e:
-            transcription = f"API Error: {e}"
 
-        
-        # Convert to romaji 
+        # 4. Kakasi Romaji
         romaji = ""
         try:
             kks = pykakasi.kakasi()
             result = kks.convert(transcription)
-            # Join the 'hepburn' reading of each word
             romaji = " ".join([item['hepburn'] for item in result])
-            print(f"Romaji: {romaji}")
-        except Exception as e:
-            print(f"Romaji Error: {e}")
+        except:
             romaji = "Error"
 
-        
-        # Run analysis
-        combined_label  = f"{romaji} : {transcription}"
-        showPitchOnGraph(temp_wav, combined_label)
+        # THE SIAMESE AI GRADING BLOCK
+        ai_score = "N/A"
+        if siamese_model and temp_native_mp3:
+            try:
+                # Turn both audios into 128x100 pictures
+                user_matrix = prepare_audio_for_ai(temp_user_wav)
+                native_matrix = prepare_audio_for_ai(temp_native_mp3)
+                
+                # Ask the twin brains to compare them
+                prediction = siamese_model.predict([native_matrix, user_matrix], verbose=0)
+                
+                # Convert the raw decimal to a percentage
+                confidence = prediction[0][0] * 100
+                ai_score = f"{confidence:.1f}%"
+                print(f"AI Match Score: {ai_score}")
+            except Exception as ai_err:
+                print(f"AI Grading Failed: {ai_err}")
+                ai_score = "Error"
+
+        # Generate the Matplotlib Graph
+        combined_label = f"{romaji} : {transcription}"
+        showPitchOnGraph(temp_user_wav, combined_label)
 
         img_buffer = io.BytesIO()
         plt.savefig(img_buffer, format="png", dpi=150)
         img_buffer.seek(0)
         plt.close()
 
-        # Send respone back in url
         response = send_file(img_buffer, mimetype="image/png")
 
-        # URL Encode the Japanese text so headers don't break
-        # Example: '猫' becomes '%E7%8C%AB'
+        # Send headers back to Flutter
         response.headers["X-Transcription"] = urllib.parse.quote(transcription)
         response.headers["X-Transcription-Romaji"] = urllib.parse.quote(romaji)
+        response.headers["X-AI-Score"] = urllib.parse.quote(ai_score) # Send the AI grade!
         
         return response
 
@@ -208,12 +226,11 @@ def process_audio():
         return jsonify({"error": str(e)}), 500
     
     finally:
-        # Cleanup
-        if temp_webm and os.path.exists(temp_webm): os.remove(temp_webm)
-        if temp_wav and os.path.exists(temp_wav): os.remove(temp_wav)
-        
+        # Cleanup all temp files so your server doesn't crash from full memory
+        if temp_user_webm and os.path.exists(temp_user_webm): os.remove(temp_user_webm)
+        if temp_user_wav and os.path.exists(temp_user_wav): os.remove(temp_user_wav)
+        if temp_native_mp3 and os.path.exists(temp_native_mp3): os.remove(temp_native_mp3)
 
 if __name__ == "__main__":
-    # Render provides the PORT variable
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
