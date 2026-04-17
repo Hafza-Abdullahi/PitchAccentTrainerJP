@@ -59,15 +59,62 @@ Because the words are different but the pitch is the same, the AI is forced to i
 
 -----
 
+## Model Performance & Training Data
+
+To ensure the AI learned the abstract concept of pitch rather than just memorizing specific voices, the model was trained using a balanced dataset of **900 native audio samples** (300 per pitch category) with a strict isolation strategy.
+
+### Training Strategy: The 80/20 Split (Testing/Unseen Data Split)
+
+### Dataset Breakdown
+| Data Category | Total Pairs | Source Material |
+| :--- | :--- | :--- |
+| **Training Set** | **1,000 Pairs** | 720 Raw Files (80%) |
+| **Validation Set** | **200 Pairs** | 180 Raw Files (20%) |
+| **Total Exposure** | **1,200 Comparisons** | 30 Epochs (Rounds) |
+
+### Learning Curves
+The graphs below show the AI's progress. The **~88-90% Validation Accuracy** shows that the model successfully generalized the concepts of Heiban, Atamadaka, and Nakadaka.
+
+<img width="1258" height="437" alt="AI Training Graphs" src="https://github.com/user-attachments/assets/3dfd12ed-e627-4379-bc13-1c37b08fef8f" />
+
+---
+
+### Why 1,000 pairs from only 720 files?
+By using a **Siamese Architecture**, we can generate multiple unique combinations from the same files (e.g., Word A + Word B, Word B + Word C). This acts as a form of **Data Augmentation**, forcing the AI to see the same "Heiban" pattern across hundreds of different word-pair combinations. This teaches the network to ignore the consonants and focus entirely on the pitch contour.
+
+---
+
 ## The Goal
 
 When a non-native user speaks into the app, the model will compare their audio directly against a correct speaker saying the exact same word. Because the AI will understand pitch contours, it will accurately score how well the user matched the correct pitch accent, rather than just checking if they pronounced the right letters.
 
 -----
 
-## Features Implemented So Far
+## 🛠️ Features & Development Roadmap
 
-  * **Automated Data Sourcing:** A custom web scraper that pulls base-dictionary words from the Online Japanese Accent Dictionary (OJAD).
-  * **Sample Balancing System:** Ensures exactly N files per pitch category to prevent AI bias.
-  * **Audio Pre-Processing:** Automatically converts raw `.mp3` files into mathematical `.npy` Mel-Spectrogram matrices for AI training.
-  * **Visual Spectrogram Generator:** Converts the raw math into PNG heatmaps for visual debugging and checks.
+### ✅ Completed
+* **Automated Data Sourcing:** Built a custom web scraper to pull base-dictionary words and native audio from the **Online Japanese Accent Dictionary (OJAD)**.
+* **Sample Balancing System:** Implemented a logic gate to ensure exactly 300 files per pitch category, preventing the AI from developing a "majority bias."
+* **Audio Pre-Processing:** Created a pipeline to convert raw `.mp3` files into mathematical `.npy` Mel-Spectrogram matrices with a **500Hz Band-Pass filter**.
+* **Visual Spectrogram Generator:** Developed a debugger that converts raw math matrices back into PNG heatmaps to visually verify pitch patterns.
+* **Siamese Model Training:** Successfully trained a Siamese Neural Network on 1,000+ audio pairs, achieving **~88% validation accuracy** on unseen voices.
+* **Cross-Platform UI:** Developed with **Flutter and Dart** to provide high-performance, real-time visual feedback of pitch contours.
+* **AnkiConnect API Integration:** Leverages the **AnkiConnect API** to allow users to sync their personal vocabulary decks directly from Anki into the trainer.
+* **Automated Asset Serialization:** A custom system that retrieves Anki media files (via base64) and serializes metadata into JSON for optimized local performance.
+* **Linguistic Foundations:** Combines Japanese phonetics with **Spaced Repetition (SRS)** logic to ensure long-term retention of pitch patterns.
+
+### 🚧 To Do / In Progress
+
+#### **Siamese Model Integration**
+* **AI Integration:** Moving the trained `.h5` model into the production server so it can grade user audio on the fly.
+* **Mora-Count Logic:** Implementing a dynamic "Template Vault" that selects the correct native reference based on the number of beats (morae) detected in the user's speech to use as a comparison for the Siamese model input.
+
+#### **Frontend & UX**
+* **Model-to-UI Connection:** Connecting the Flutter frontend to the Flask API to display "Match Percentage" scores to the user.
+* **Google Authentication:** Implementing Firebase/Google Sign-in so users can track their progress and saved words.
+* **UI Polish:** Cleaning up the interface to move from a "Developer Tool" to a consumer-ready language app.
+
+#### **Future Research**
+* **Pure Contour Training:** Investigating a "V2" model trained strictly on **F0 Pitch Contours** (line graphs) rather than Mel-Spectrograms (heatmaps) to see if removing all background noise increases accuracy further.
+
+---
