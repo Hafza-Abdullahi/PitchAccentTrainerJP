@@ -52,7 +52,7 @@ def abs_diff(tensors):
 matplotlib.use('Agg')
 
 # font for matplot 
-plt.rcParams['font.family'] = ['MS Gothic', 'Meiryo', 'Yu Gothic', 'sans-serif']
+plt.rcParams['font.family'] = ['MS Gothic', 'Meiryo', 'Yu Gothic', 'sans-serif', "Noto Sans CJK JP"] 
 
 app = Flask(__name__)
 # This allows your Flutter app from ANY URL to talk to this server
