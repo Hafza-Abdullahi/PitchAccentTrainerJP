@@ -193,6 +193,17 @@ def process_audio():
             t_native.close()
             temp_native_mp3 = t_native.name
 
+            # convrt to wav for processing
+            temp_native_wav = t_native.name + ".wav"
+            try:
+                # Convert the Anki MP3 into a WAV file so Parselmouth can read it
+                native_audio_seg = AudioSegment.from_file(temp_native_mp3)
+                native_audio_seg.export(temp_native_wav, format="wav")
+            except Exception as conv_err:
+                print(f"FFmpeg Native Conversion Failed: {conv_err}")
+                temp_native_wav = temp_native_mp3
+
+
         # 3. Google Transcription
         recognizer = sr.Recognizer()
         transcription = "Unknown"
@@ -223,11 +234,11 @@ def process_audio():
 
         # THE SIAMESE AI GRADING BLOCK
         ai_score = "N/A"
-        if siamese_model and temp_native_mp3:
+        if siamese_model and temp_native_wav and temp_user_wav:
             try:
                 # Turn both audios into 128x100 pictures
                 user_matrix = prepare_audio_for_ai(temp_user_wav)
-                native_matrix = prepare_audio_for_ai(temp_native_mp3)
+                native_matrix = prepare_audio_for_ai(temp_native_wav)
                 
                 # Ask the twin brains to compare them
                 prediction = siamese_model.predict([native_matrix, user_matrix], verbose=0)
@@ -242,7 +253,7 @@ def process_audio():
 
         # Generate the Matplotlib Graph
         combined_label = f"{romaji} : {transcription}"
-        showPitchOnGraph(temp_native_mp3, temp_user_wav, word_label=combined_label)
+        showPitchOnGraph(temp_native_wav, temp_user_wav, word_label=combined_label)
 
         img_buffer = io.BytesIO()
         plt.savefig(img_buffer, format="png", dpi=150)
@@ -266,7 +277,7 @@ def process_audio():
         # Cleanup all temp files so your server doesn't crash from full memory
         if temp_user_webm and os.path.exists(temp_user_webm): os.remove(temp_user_webm)
         if temp_user_wav and os.path.exists(temp_user_wav): os.remove(temp_user_wav)
-        if temp_native_mp3 and os.path.exists(temp_native_mp3): os.remove(temp_native_mp3)
+        if temp_native_wav and os.path.exists(temp_native_wav): os.remove(temp_native_wav)
 
 
 print("=======================================")
