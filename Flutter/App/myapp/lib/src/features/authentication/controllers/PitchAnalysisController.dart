@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:cross_file/cross_file.dart'; // needed for xfile
+import 'package:flutter/services.dart' show rootBundle; // needed to grab native audio
 
 /// A controller class responsible for managing the communication between
 /// the client application and the remote pitch analysis API.
@@ -31,6 +32,7 @@ class PitchAnalysisController {
       print("Running on web: $kIsWeb");
       print("audioPath: $audioPath");
       print("audioFile: $audioFile");
+      print("nativeAudioPath: $nativeAudioPath");
 
       // 1. Attach users recording
       if (kIsWeb) {
@@ -84,18 +86,18 @@ class PitchAnalysisController {
 
       // Attach Native Speaker Audio (for future use))
       if (nativeAudioPath != null && nativeAudioPath.isNotEmpty) {
-        if (kIsWeb) {
-          final http.Response nativeRes = await http.get(Uri.parse(nativeAudioPath));
+        try {
+          // Read the asset directly from memory into raw bytes (Works on all platforms)
+          final ByteData nativeData = await rootBundle.load(nativeAudioPath);
+          final Uint8List nativeBytes = nativeData.buffer.asUint8List();
+
           request.files.add(http.MultipartFile.fromBytes(
               'native_audio',
-              nativeRes.bodyBytes,
-              filename: 'native_audio.mp3'
+              nativeBytes,
+              filename: 'native_audio.mp3' // Dummy filename so the Flask server accepts it
           ));
-        } else {
-          request.files.add(await http.MultipartFile.fromPath(
-              'native_audio',
-              nativeAudioPath
-          ));
+        } catch (e) {
+          print("Error loading native audio asset: $e");
         }
       }
 
