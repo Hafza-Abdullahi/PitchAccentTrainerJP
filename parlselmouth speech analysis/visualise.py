@@ -125,6 +125,7 @@ def showPitchOnGraph(*audio_files, word_label="Unknown"):
 
             except Exception as e:
                 print(f"Error processing {audio_file}: {e}")
+                continue # continue as normal
 
             # Force clean names based on the order the files were passed in
             if i == 0:
