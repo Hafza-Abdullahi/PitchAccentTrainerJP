@@ -32,6 +32,9 @@ import tempfile
 # converting webM  to wav for site
 from pydub import AudioSegment
 
+# for reading and writing audio files
+import soundfile as sf
+
 # Ai model
 import librosa
 import tensorflow as tf
@@ -46,6 +49,7 @@ import pykakasi
 import urllib.parse 
 # font that accepts jp
 import matplotlib.font_manager as fm 
+
 
 # register the custom layer so it can be loaded with the model later without crashing
 @tf.keras.utils.register_keras_serializable()
@@ -94,6 +98,19 @@ def prepare_audio_for_ai(file_path, max_time_steps=100):
         
     return mel_db.reshape(1, 128, max_time_steps, 1)
 
+def trim_audio_file(file_path):
+    try:
+        # Load the audio file
+        y, sr = librosa.load(file_path, sr=None)
+        
+        # Trim the silence (top_db=30 means anything 30 decibels quieter than the loudest sound is cut)
+        y_trimmed, index = librosa.effects.trim(y, top_db=30)
+        
+        # Overwrite the original file with the cleanly trimmed version
+        sf.write(file_path, y_trimmed, sr)
+        print(f"Trimmed silence from {file_path}")
+    except Exception as e:
+        print(f"Could not trim {file_path}: {e}")
 
 def moving_average(data, window_size):
     return np.convolve(data, np.ones(window_size)/window_size, mode='same')
@@ -235,6 +252,10 @@ def process_audio():
         except Exception as kakasi_err:
             print(f"KAKASI ROMAJI CRASHED: {kakasi_err}")
             romaji = "Error"
+
+        # TRIM DEAD AIR AND MIC CLICKS
+        if temp_user_wav: trim_audio_file(temp_user_wav)
+        if temp_native_wav: trim_audio_file(temp_native_wav)
 
         # THE SIAMESE AI GRADING BLOCK
         ai_score = "N/A"
