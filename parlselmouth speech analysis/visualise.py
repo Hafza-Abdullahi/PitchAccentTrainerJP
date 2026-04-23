@@ -188,18 +188,6 @@ def showPitchOnGraph(*audio_files, word_label="Unknown"):
     plt.legend()
     plt.grid(True, alpha=0.3)
 
-    
-
-
-#flask app 
-
-#health check
-@app.route("/", methods=["GET"])
-def health_check():
-    return "Pitch Accent API is Live ", 200
-
-@app.route("/process-audio", methods=["POST"])
-
 def get_alignment_score(native_path, user_path):
     try:
         # Load both files
@@ -226,6 +214,17 @@ def get_alignment_score(native_path, user_path):
         print(f"DTW Failed: {e}")
         return 0
     
+
+
+#flask app 
+
+#health check
+@app.route("/", methods=["GET"])
+def health_check():
+    return "Pitch Accent API is Live ", 200
+
+@app.route("/process-audio", methods=["POST"])
+   
 def process_audio():
     if "files" not in request.files:
         return jsonify({"error": "No audio files uploaded"}), 400
@@ -239,6 +238,7 @@ def process_audio():
     temp_user_webm = None
     temp_user_wav = None
     temp_native_mp3 = None
+    temp_native_wav = None
 
     try:
         # 1. Save and Convert User Audio
@@ -331,11 +331,11 @@ def process_audio():
         # DTW Scroring as a backup or additional metric
         dtw_score_val = get_alignment_score(temp_native_wav, temp_user_wav)
 
-        # 60% weight to DTW (Syllables) and 40% to AI (Nuance)
+        # 60% weight to DTW (alignment) and 40% to AI (quality)
         total_val = (dtw_score_val * 0.6) + (ai_score_val * 0.4)
         final_combined_score = f"{total_val:.1f}%"
         
-        print(f"AI: {ai_score_val:.1f} | DTW: {dtw_score_val:.1f} | Combined: {final_combined_score}")
+        print(f"Scores -> AI: {ai_score_val:.1f} | DTW: {dtw_score_val:.1f} | Final: {final_combined_score}")
 
         # Generate the Matplotlib Graph
         combined_label = f"{romaji} : {transcription}"
