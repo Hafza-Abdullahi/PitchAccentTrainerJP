@@ -32,6 +32,7 @@ from pydub import AudioSegment
 import librosa
 import tensorflow as tf
 from tensorflow.keras.models import load_model
+import tensorflow.keras.backend as K
 
 # googles speech recogn 
 import speech_recognition as sr 
@@ -42,24 +43,31 @@ import urllib.parse
 # font that accepts jp
 import matplotlib.font_manager as fm 
 
+# register the custom layer so it can be loaded with the model later without crashing
+@tf.keras.utils.register_keras_serializable()
+def abs_diff(tensors):
+    import tensorflow as tf
+    return tf.abs(tensors[0] - tensors[1])
+
 matplotlib.use('Agg')
 
 # font for matplot 
-plt.rcParams['font.family'] = ['Noto Sans CJK JP', 'sans-serif']
+plt.rcParams['font.family'] = ['MS Gothic', 'Meiryo', 'Yu Gothic', 'sans-serif']
 
 app = Flask(__name__)
 # This allows your Flutter app from ANY URL to talk to this server
+siamese_model = None # global variable to hold the AI model in memory after loading it once
 
 CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers=["X-Transcription", "X-Transcription-Romaji", "X-AI-Score"])
 
 # Load Siamese Machine Learning Model for Audio Comparision
-try:
-    print("Loading Pitch Accent AI...")
-    siamese_model = load_model("pitch_accent_model_final.h5")
-    print("Model loaded successfully!")
-except Exception as e:
-    print(f"Error loading model (AI grading disabled): {e}")
-    siamese_model = None
+#try:
+    #print("Loading Pitch Accent AI...")
+    #siamese_model = load_model("pitch_accent_model_final.h5", compile=False) # load only brain and not the training code for faster loading and less memory usage
+    #print("Model loaded successfully!")
+#except Exception as e:
+    #print(f"Error loading model (AI grading disabled): {e}")
+    #siamese_model = None
 
 
 # Process Audio for Siamese model (convert audio to mel spectograms)
@@ -86,35 +94,51 @@ def prepare_audio_for_ai(file_path, max_time_steps=100):
 def moving_average(data, window_size):
     return np.convolve(data, np.ones(window_size)/window_size, mode='same')
 
-def showPitchOnGraph(audio_path, word_label="Unknown"):
+def showPitchOnGraph(*audio_files, word_label="Unknown"):
     # Create plot
     plt.figure(figsize=(12, 8))
     
-    line_colour = 'blue'
-    try:
-        #load audio
-        snd = parselmouth.Sound(audio_path)
+    colors = ['blue', 'red', 'green', 'orange', 'purple']  #Diff colours for eahc file
+    for i, audio_file in enumerate(audio_files):
+            # Incase of empty file, skip
+            if not audio_file:
+                continue
 
-        #extract the pitch
-        pitch = snd.to_pitch()
-        times = pitch.xs()
-        frequencies = pitch.selected_array["frequency"]
+            try:
 
-        # Basic plotting if smoothing fails or just simply plot
-        label = audio_path.split('/')[-1]
-        plt.plot(times, frequencies, label=f"{label}", linewidth=2, color=line_colour)
+                #load audio
+                snd = parselmouth.Sound(audio_file)
 
-        # Plot
-        plt.plot(times, frequencies, label=f"{label} - Original", alpha=0.3, linewidth=1, color=line_colour)
+                #extract the pitch
+                pitch = snd.to_pitch()
+                times = pitch.xs()
+                frequencies = pitch.selected_array["frequency"]
 
-    except Exception as e:
-        print(f"Error processing {audio_path}: {e}")
-    
-    plt.xlabel("Time (s)")
-    plt.ylabel("Frequency (Hz)")
-    plt.title("Pitch Contour Comparison for " + word_label)
-    plt.legend()
-    plt.grid(True, alpha=0.3)
+                #different smoothing algorithms,
+                ma_smoothed = moving_average(frequencies, window_size=8)  # Moving Average
+                gaussian_smoothed = gaussian_filter1d(frequencies, sigma=2)  # Gaussian Smoothing
+                savgol_smoothed = savgol_filter(frequencies, window_length=11, polyorder=2)  # Savitzky-Golay
+                average_smoothed = (ma_smoothed + gaussian_smoothed + savgol_smoothed) / 3
+
+            except Exception as e:
+                print(f"Error processing {audio_file}: {e}")
+
+            # Force clean names based on the order the files were passed in
+            if i == 0:
+                label = "Native Speaker"
+            else:
+                label = "Your Voice"
+
+            # Plot
+            plt.plot(times, frequencies, label=f"{label} - Original", alpha=0.3, linewidth=1, color=colors[i])
+            plt.plot(times, average_smoothed, label=f"{label} - Average", linewidth=2, color=colors[i])
+        
+            plt.xlabel("Time (s)")
+            plt.ylabel("Frequency (Hz)")
+            plt.title("Pitch Contour Comparison for " + word_label)
+            plt.legend()
+            plt.grid(True, alpha=0.3)
+
     
 
 
@@ -172,7 +196,15 @@ def process_audio():
             with sr.AudioFile(temp_user_wav) as source:
                 audio_data = recognizer.record(source)
                 transcription = recognizer.recognize_google(audio_data, language="ja-JP")
-        except:
+                print(f"Google heard: {transcription}")
+
+        # more detailed error handling for speech recognition
+        except sr.UnknownValueError:
+            print("Google Speech: Format is fine, but couldn't recognize any Japanese words.")
+            transcription = "Could not understand audio"
+        # catch all other exceptions to prevent server crash and provide feedback
+        except Exception as sr_err:
+            print(f"GOOGLE SPEECH CRASHED: {sr_err}")
             transcription = "Could not understand audio"
 
         # 4. Kakasi Romaji
@@ -181,7 +213,8 @@ def process_audio():
             kks = pykakasi.kakasi()
             result = kks.convert(transcription)
             romaji = " ".join([item['hepburn'] for item in result])
-        except:
+        except Exception as kakasi_err:
+            print(f"KAKASI ROMAJI CRASHED: {kakasi_err}")
             romaji = "Error"
 
         # THE SIAMESE AI GRADING BLOCK
@@ -205,7 +238,7 @@ def process_audio():
 
         # Generate the Matplotlib Graph
         combined_label = f"{romaji} : {transcription}"
-        showPitchOnGraph(temp_user_wav, combined_label)
+        showPitchOnGraph(temp_native_mp3, temp_user_wav, word_label=combined_label)
 
         img_buffer = io.BytesIO()
         plt.savefig(img_buffer, format="png", dpi=150)
@@ -233,4 +266,18 @@ def process_audio():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    # Load the AI Model right before starting the server
+    print("=======================================")
+    print("STARTING SERVER BOOTUP SEQUENCE...")
+    print("=======================================")
+    try:
+        print("Loading Pitch Accent AI...")
+        siamese_model = load_model("pitch_accent_model.keras", compile=False, safe_mode=False, custom_objects={'K': K})# load only brain and not the training code for faster loading and less memory usage
+        print("Model loaded successfully!")
+    except Exception as e:
+        print(f"Error loading model (AI grading disabled): {e}")
+        siamese_model = None
+        
+    print("Starting Flask web server...")
+
     app.run(host="0.0.0.0", port=port)
