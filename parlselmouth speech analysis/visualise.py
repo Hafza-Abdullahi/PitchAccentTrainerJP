@@ -20,6 +20,10 @@ from scipy.signal import savgol_filter
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 
+# for render to use
+import static_ffmpeg
+static_ffmpeg.add_paths()
+
 #io for saving file in RAM
 import io
 import os
