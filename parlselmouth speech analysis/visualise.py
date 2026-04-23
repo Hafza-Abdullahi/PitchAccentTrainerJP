@@ -264,20 +264,22 @@ def process_audio():
         if temp_user_wav and os.path.exists(temp_user_wav): os.remove(temp_user_wav)
         if temp_native_mp3 and os.path.exists(temp_native_mp3): os.remove(temp_native_mp3)
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    # Load the AI Model right before starting the server
-    print("=======================================")
-    print("STARTING SERVER BOOTUP SEQUENCE...")
-    print("=======================================")
-    try:
-        print("Loading Pitch Accent AI...")
-        siamese_model = load_model("pitch_accent_model.keras", compile=False, safe_mode=False, custom_objects={'K': K})# load only brain and not the training code for faster loading and less memory usage
-        print("Model loaded successfully!")
-    except Exception as e:
-        print(f"Error loading model (AI grading disabled): {e}")
-        siamese_model = None
-        
-    print("Starting Flask web server...")
 
+print("=======================================")
+print("STARTING SERVER BOOTUP SEQUENCE...")
+print("=======================================")
+try:
+    print("Loading Pitch Accent AI...")
+    # Make sure you keep your custom_objects fix here!
+    siamese_model = load_model("pitch_accent_model.keras", compile=False, safe_mode=False, custom_objects={'K': K})
+    print("Model loaded successfully!")
+except Exception as e:
+    print(f"Error loading model (AI grading disabled): {e}")
+    siamese_model = None
+
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))        
+    print("Starting Flask web server...")
     app.run(host="0.0.0.0", port=port)
