@@ -98,11 +98,14 @@ def showPitchOnGraph(*audio_files, word_label="Unknown"):
     # Create plot
     plt.figure(figsize=(12, 8))
     
-    colors = ['blue', 'red', 'green', 'orange', 'purple']  #Diff colours for eahc file
+    colors = ['blue', 'red', 'green', 'orange', 'purple']  #Diff colours for each file
     for i, audio_file in enumerate(audio_files):
             # Incase of empty file, skip
             if not audio_file:
                 continue
+
+            # Incase audio is corrupted or unreadable
+            times, frequencies, average_smoothed = [], [], []
 
             try:
 
@@ -276,7 +279,6 @@ try:
 except Exception as e:
     print(f"Error loading model (AI grading disabled): {e}")
     siamese_model = None
-
 
 
 if __name__ == "__main__":
