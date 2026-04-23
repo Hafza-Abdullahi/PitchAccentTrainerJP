@@ -116,53 +116,77 @@ def moving_average(data, window_size):
     return np.convolve(data, np.ones(window_size)/window_size, mode='same')
 
 def showPitchOnGraph(*audio_files, word_label="Unknown"):
-    # Create plot
     plt.figure(figsize=(12, 8))
     
-    colors = ['blue', 'red', 'green', 'orange', 'purple']  #Diff colours for each file
+    colors = ['blue', 'red', 'green', 'orange', 'purple']
+    
+    # DTW STORAGE FOR ALIGNMENT
+    ref_frequencies = None
+    ref_times = None
+
     for i, audio_file in enumerate(audio_files):
-            # Incase of empty file, skip
-            if not audio_file:
-                continue
+        if not audio_file:
+            continue
 
-            # Incase audio is corrupted or unreadable
-            times, frequencies, average_smoothed = [], [], []
+        try:
+            # Load audio
+            snd = parselmouth.Sound(audio_file)
+            pitch = snd.to_pitch()
+            times = pitch.xs()
+            frequencies = pitch.selected_array["frequency"]
 
-            try:
+            # Your original smoothing algorithms
+            ma_smoothed = moving_average(frequencies, window_size=8)
+            gaussian_smoothed = gaussian_filter1d(frequencies, sigma=2)
+            savgol_smoothed = savgol_filter(frequencies, window_length=11, polyorder=2)
+            average_smoothed = (ma_smoothed + gaussian_smoothed + savgol_smoothed) / 3
 
-                #load audio
-                snd = parselmouth.Sound(audio_file)
-
-                #extract the pitch
-                pitch = snd.to_pitch()
-                times = pitch.xs()
-                frequencies = pitch.selected_array["frequency"]
-
-                #different smoothing algorithms,
-                ma_smoothed = moving_average(frequencies, window_size=8)  # Moving Average
-                gaussian_smoothed = gaussian_filter1d(frequencies, sigma=2)  # Gaussian Smoothing
-                savgol_smoothed = savgol_filter(frequencies, window_length=11, polyorder=2)  # Savitzky-Golay
-                average_smoothed = (ma_smoothed + gaussian_smoothed + savgol_smoothed) / 3
-
-            except Exception as e:
-                print(f"Error processing {audio_file}: {e}")
-                continue # continue as normal
-
-            # Force clean names based on the order the files were passed in
+            # DTW ALIGNMENT LOGIC
             if i == 0:
+                # Store the Native Speaker as the reference
+                ref_frequencies = average_smoothed
+                ref_times = times
+                
+                # Plot the native speaker normally
+                display_times = times
+                display_freqs = average_smoothed
+                display_raw = frequencies
                 label = "Native Speaker"
             else:
+                # This is "Your Voice" - Align it to the Native Reference
+                # Use librosa's DTW to find the "rubber band" path
+                # Align the smoothed lines because they are less 'noisy' for the math
+                D, wp = librosa.sequence.dtw(X=ref_frequencies, Y=average_smoothed, backtrack=True)
+                
+                # Create empty arrays to hold the warped (stretched) data
+                warped_freqs = np.zeros_like(ref_frequencies)
+                warped_raw = np.zeros_like(ref_frequencies)
+                
+                # Map your voice frames to the native speaker's timeline
+                for ref_idx, user_idx in wp:
+                    warped_freqs[ref_idx] = average_smoothed[user_idx]
+                    warped_raw[ref_idx] = frequencies[user_idx]
+                
+                # Use the Native's time axis so the lines overlap perfectly
+                display_times = ref_times
+                display_freqs = warped_freqs
+                display_raw = warped_raw
                 label = "Your Voice"
+            # ---------------------------
 
-            # Plot
-            plt.plot(times, frequencies, label=f"{label} - Original", alpha=0.3, linewidth=1, color=colors[i])
-            plt.plot(times, average_smoothed, label=f"{label} - Average", linewidth=2, color=colors[i])
-        
-            plt.xlabel("Time (s)")
-            plt.ylabel("Frequency (Hz)")
-            plt.title("Pitch Contour Comparison for " + word_label)
-            plt.legend()
-            plt.grid(True, alpha=0.3)
+            # Plot using the aligned data
+            plt.plot(display_times, display_raw, label=f"{label} - Original", alpha=0.3, linewidth=1, color=colors[i])
+            plt.plot(display_times, display_freqs, label=f"{label} - Aligned Average", linewidth=2, color=colors[i])
+
+        except Exception as e:
+            print(f"Error processing {audio_file}: {e}")
+            continue
+
+    plt.xlabel("Time (s) - Aligned to Native")
+    plt.ylabel("Frequency (Hz)")
+    plt.title("Aligned Pitch Contour Comparison: " + word_label)
+    plt.legend()
+    plt.grid(True, alpha=0.3)
 
     
 
@@ -175,6 +199,33 @@ def health_check():
     return "Pitch Accent API is Live ", 200
 
 @app.route("/process-audio", methods=["POST"])
+
+def get_alignment_score(native_path, user_path):
+    try:
+        # Load both files
+        y_n, sr_n = librosa.load(native_path, sr=None)
+        y_u, sr_u = librosa.load(user_path, sr=None)
+
+        # Extract MFCCs (Mel-frequency cepstral coefficients) which are commonly used features for audio comparison
+        mfcc_n = librosa.feature.mfcc(y=y_n, sr=sr_n)
+        mfcc_u = librosa.feature.mfcc(y=y_u, sr=sr_u)
+
+        # Calculate DTW Distance
+        # X is the native (reference), Y is the user (target)
+        D, wp = librosa.sequence.dtw(X=mfcc_n, Y=mfcc_u, backtrack=True)
+        
+        # Normalize the distance (Lower is better)
+        # We divide by the length of the warping path so long words aren't penalized
+        dist = D[-1, -1] / len(wp)
+
+        # Convert distance to a 0-100 Score
+        # (Heuristic: 0-20 is usually a great match, 50+ is poor)
+        dtw_score = max(0, 100 - (dist * 1.5)) 
+        return dtw_score
+    except Exception as e:
+        print(f"DTW Failed: {e}")
+        return 0
+    
 def process_audio():
     if "files" not in request.files:
         return jsonify({"error": "No audio files uploaded"}), 400
@@ -258,7 +309,8 @@ def process_audio():
         if temp_native_wav: trim_audio_file(temp_native_wav)
 
         # THE SIAMESE AI GRADING BLOCK
-        ai_score = "N/A"
+        ai_score_val = "N/A"
+        final_combined_score = "N/A"
         if siamese_model and temp_native_wav and temp_user_wav:
             try:
                 # Turn both audios into 128x100 pictures
@@ -270,11 +322,20 @@ def process_audio():
                 
                 # Convert the raw decimal to a percentage
                 confidence = prediction[0][0] * 100
-                ai_score = f"{confidence:.1f}%"
-                print(f"AI Match Score: {ai_score}")
+                ai_score_val = f"{confidence:.1f}%"
+                print(f"AI Match Score: {ai_score_val}")
             except Exception as ai_err:
                 print(f"AI Grading Failed: {ai_err}")
-                ai_score = "Error"
+                ai_score_val = "0.0%"
+
+        # DTW Scroring as a backup or additional metric
+        dtw_score_val = get_alignment_score(temp_native_wav, temp_user_wav)
+
+        # 60% weight to DTW (Syllables) and 40% to AI (Nuance)
+        total_val = (dtw_score_val * 0.6) + (ai_score_val * 0.4)
+        final_combined_score = f"{total_val:.1f}%"
+        
+        print(f"AI: {ai_score_val:.1f} | DTW: {dtw_score_val:.1f} | Combined: {final_combined_score}")
 
         # Generate the Matplotlib Graph
         combined_label = f"{romaji} : {transcription}"
@@ -290,7 +351,7 @@ def process_audio():
         # Send headers back to Flutter
         response.headers["X-Transcription"] = urllib.parse.quote(transcription)
         response.headers["X-Transcription-Romaji"] = urllib.parse.quote(romaji)
-        response.headers["X-AI-Score"] = urllib.parse.quote(ai_score) # Send the AI grade!
+        response.headers["X-AI-Score"] = urllib.parse.quote(final_combined_score) # Send the AI and DTW combined score as the main feedback, not just the AI score alone
         
         return response
 
