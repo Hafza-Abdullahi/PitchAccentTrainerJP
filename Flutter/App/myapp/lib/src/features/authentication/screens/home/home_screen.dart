@@ -144,18 +144,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (hasPerm) {
         if (kIsWeb) {
-          print("WEB: attempting to record in native browser format");
-          // Leaving RecordConfig empty forces the browser to use its native default
-          // (WebM for Edge/Chrome, MP4 for Safari)
-          await _audioRecorder.start(const RecordConfig(), path: '');
-        } else {
-          print("MOBILE: attempting to record");
-          final dir = await getTemporaryDirectory();
-          // Back to .m4a because mobile natively prefers it (Python server will convert it!)
-          String path = '${dir.path}/user_practice.m4a';
+          print("WEB: Forcing Opus format for Brave/Edge/Chrome");
+          // Web: opus
           await _audioRecorder.start(
-              const RecordConfig(encoder: AudioEncoder.aacLc),
-              path: path);
+              const RecordConfig(encoder: AudioEncoder.opus),
+              path: ''
+          );
+        } else {
+          final dir = await getTemporaryDirectory();
+
+          // WINDOWS/MAC/MOBILE AUTO DETECT
+          // Check if aac is supported
+          if (await _audioRecorder.isEncoderSupported(AudioEncoder.aacLc)) {
+            print("NATIVE: Using AAC (Mobile/Mac)");
+            String path = '${dir.path}/user_practice.m4a';
+            await _audioRecorder.start(
+                const RecordConfig(encoder: AudioEncoder.aacLc),
+                path: path
+            );
+          } else {
+            print("NATIVE: AAC Not Supported. Falling back to raw WAV (Windows)");
+            // If it's Windows, use pcm16bits,  official code for a WAV file
+            String path = '${dir.path}/user_practice.wav';
+            await _audioRecorder.start(
+                const RecordConfig(encoder: AudioEncoder.pcm16bits),
+                path: path
+            );
+          }
         }
 
         setState(() {
@@ -164,7 +179,6 @@ class _HomeScreenState extends State<HomeScreen> {
         });
         print("Recording successfully started!");
       } else {
-        //
         print("ERROR: Microphone permission was denied!");
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text(

@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
-
+from difflib import SequenceMatcher
 #flask and cors, send_file for images
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
@@ -267,6 +267,9 @@ def process_audio():
         user_file = request.files.getlist("files")[0]
         native_file = request.files.get("native_audio")
 
+        # Get the target word in romaji for word comparison, used for scoring later
+        target_romaji = request.form.get("target_romaji", "")
+
         # 1. Save User Audio
         user_suffix = os.path.splitext(user_file.filename)[1].lower() or ".webm"
         t_user = tempfile.NamedTemporaryFile(delete=False, suffix=user_suffix)
@@ -334,40 +337,47 @@ def process_audio():
         except Exception as kakasi_err:
             print(f"KAKASI ROMAJI CRASHED: {kakasi_err}")
             romaji = "Error"
+        else:
+            word_match_ratio = 1.0 # Default
 
-        # TRIM DEAD AIR AND MIC CLICKS
-        if temp_user_wav: trim_audio_file(temp_user_wav)
 
-        # If google speech doesnt recognise the word, prompt to try again 
-        ai_val = 0.0
-        dtw_val = 0.0
-        final_combined_score = "0.0%"
+            # Calculate String Similarity 
+            if target_romaji and romaji and romaji != "Error":
+                # Compare what Google heard to the Anki Card's target word
+                word_match_ratio = SequenceMatcher(None, target_romaji.lower(), romaji.lower()).ratio()
+                print(f"Soft Gatekeeper Similarity Match: {word_match_ratio * 100:.1f}%")
 
-        if transcription == "Could not understand audio":
-            print("Static or silence detected")
-
-        else: # only grade if a word is heard
-        # THE SIAMESE AI GRADING BLOCK
-            ai_val = 0.0
-            final_combined_score = "0.0%"
             if temp_user_wav and temp_native_wav:
-                # Get AI Score
-                ai_val = 0.0
-                if siamese_model:
-                    u_mat = prepare_audio_for_ai(temp_user_wav)
-                    n_mat = prepare_audio_for_ai(temp_native_wav)
-                    prediction = siamese_model.predict([n_mat, u_mat], verbose=0)
-                    ai_val = float(prediction[0][0] * 100)
+                # Did they fail the gatekeeper? (< 40% match)
+                if word_match_ratio < 0.4 and target_romaji != "":
+                    print("Gatekeeper Failed: They said the wrong word. Grade dropped to 0%.")
+                    total = 0.0
+                    ai_val = 0.0
+                    dtw_val = 0.0
+                    # Force the flutter UI to show the red "Try Again" error button!
+                    romaji = "Error" 
+                    transcription = "Could not understand audio"
+                else:
+                    # Passed Gatekeeper -> Calculate Normal Scores
+                    if siamese_model:
+                        u_mat = prepare_audio_for_ai(temp_user_wav)
+                        n_mat = prepare_audio_for_ai(temp_native_wav)
+                        prediction = siamese_model.predict([n_mat, u_mat], verbose=0)
+                        ai_val = float(prediction[0][0] * 100)
 
-                # Get DTW Score
-                dtw_val = get_alignment_score(temp_native_wav, temp_user_wav)
+                    dtw_val = get_alignment_score(temp_native_wav, temp_user_wav)
 
-                # Weighted Average: 60% DTW (Pattern) + 40% AI (Nuance)
-                total = (dtw_val * 0.6) + (ai_val * 0.4)
+                    # Weighted Average: 60% DTW (Pattern) + 40% AI (Nuance)
+                    base_score = (dtw_val * 0.6) + (ai_val * 0.4)
+                    
+                    # Apply Soft Gatekeeper Multiplier (Gradually penalize bad pronunciation)
+                    if target_romaji:
+                        total = base_score * word_match_ratio
+                    else:
+                        total = base_score
+                
                 final_combined_score = f"{total:.1f}%"
-            
-            
-            print(f"Scores -> AI: {ai_val:.1f} | DTW: {dtw_val:.1f} | Final: {final_combined_score}", flush=True)
+                print(f"Scores -> AI: {ai_val:.1f} | DTW: {dtw_val:.1f} | Final: {final_combined_score}", flush=True)
 
 
         # Generate the Matplotlib Graph
