@@ -13,6 +13,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:cross_file/cross_file.dart';
 import 'package:file_picker/file_picker.dart' as fp;
+import 'package:flutter_html/flutter_html.dart'; //
 
 import '../../../../common_widgets/card/word_card.dart';
 import '../../../../repository/anki_repository/anki_repository.dart';
@@ -355,6 +356,71 @@ class _HomeScreenState extends State<HomeScreen> {
                                       _nativeAudioPlayer.play(currentCard.wordAudio),
                                 ),
 
+                                //  Pitch Accent Display
+                                const SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    // The colored word
+                                    Expanded(
+                                      child: Html(
+                                        data: currentCard.pitch.split('</td></tr>').first
+                                            .replaceAll(RegExp(r'<table[^>]*>.*?<td>.*?</td><td>'), '<div class="pitch-box">')
+                                            + '</div>',
+                                        style: {
+                                          // Default text is BLACK / SMALL (Low Pitch)
+                                          ".pitch-box": Style(
+                                              textAlign: TextAlign.center,
+                                              fontSize: FontSize(22.0),
+                                              fontWeight: FontWeight.normal,
+                                              color: Colors.black
+                                          ),
+                                          // accent_plain is the flat HIGH pitch plateau -> RED / BIG
+                                          ".accent_plain": Style(
+                                              color: Colors.red,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: FontSize(32.0)
+                                          ),
+                                          // accent_top is the HIGH pitch peak before a drop -> RED / BIG
+                                          ".accent_top": Style(
+                                              color: Colors.red,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: FontSize(32.0)
+                                          ),
+                                        },
+                                      ),
+                                    ),
+
+                                    // Tappable Info Icon
+                                    Tooltip(
+                                      // triggerMode: TooltipTriggerMode.tap makes it work flawlessly on mobile touch screens
+                                      triggerMode: TooltipTriggerMode.tap,
+                                      showDuration: const Duration(seconds: 3),
+                                      padding: const EdgeInsets.all(12),
+                                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade900,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      textStyle: const TextStyle(color: Colors.white, fontSize: 14),
+                                      message: "Pitch Accent Guide:\n"
+                                    "🔴 Red / Bold = High Pitch\n"
+                                    "⚫ Black / Small = Low Pitch\n\n"
+                                    "Common Patterns:\n"
+                                    "• Atamadaka (Head-High): 🔴⚫⚫ (Drops immediately)\n"
+                                    "• Heiban / Odaka: ⚫🔴🔴 (Starts low, stays high)\n"
+                                    "• Nakadaka (Mid-High): ⚫🔴⚫ (Goes up, then drops)",
+                                      child: const Padding(
+                                        padding: EdgeInsets.only(right: 20.0),
+                                        child: Icon(Icons.help_outline, color: Colors.grey, size: 24),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                // --------------------------------
+                                const SizedBox(height: 20),
+                                // --------------------------------------------
+
                                 const SizedBox(height: 20),
 
                                 /*----------------- AUDIO CONTROLS -----------------*/
@@ -424,6 +490,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ElevatedButton.icon(
                                         onPressed: _playUserContent,
                                         icon: const Icon(Icons.play_arrow),
+
                                         label: Text(_droppedFile != null ? "Play File" : "Play Rec"),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.grey[200],
@@ -447,15 +514,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                 if ((_userRecordingPath != null || _droppedFile != null) && !_isRecording)
                                   SizedBox(
                                     width: double.infinity,
+                                    height: 50, // Height to match the other buttons
                                     child: ElevatedButton(
                                       onPressed: _isAnalyzing ? null : () => _generateGraph(currentCard),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.purple,
                                         foregroundColor: Colors.white,
+                                        // Same rounded rectangle shape
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                       ),
                                       child: _isAnalyzing
                                           ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                          : const Text("Analyze Pitch"),
+                                          : const Text("Analyze Pitch", style: TextStyle(fontSize: 18)),
                                     ),
                                   ),
 
@@ -485,7 +555,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                       const SizedBox(height: 15),
 
-                                      // --- NEW 3-BOX ROW (Combined, AI, DTW) ---
+                                      // --- NEW 3-BOX ROW (Combined, AI, DTW Scores) ---
                                       Row(
                                         children: [
                                           if (_combinedScore.isNotEmpty)
@@ -571,6 +641,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   _aiScore = "";
                                   _dtwScore = "";
                                 });
+                                // call _startRecording() here directly, to be instant
+                                _startRecording();
                               },
                               icon: const Icon(Icons.refresh, color: Colors.white),
                               label: const Text("Word not recognized - Try Again", style: TextStyle(fontSize: 18, color: Colors.white)),

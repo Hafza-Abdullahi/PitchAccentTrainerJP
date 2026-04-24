@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 // --- CONFIGURATION ---
-const String deckName = "Kaishi 1.5k";
-const int limit = 50; // How many cards to grab
+const String deckName = "Japanese Core 6000 Vocab"; // Name of the deck to grab
+const int limit = 150; // How many cards to grab
 // ---------------------
 
 Future<void> main() async {
@@ -22,9 +22,9 @@ Future<void> main() async {
     return;
   }
 
-  // Take only the first 50
+  // Take only the first 150
   noteIds = noteIds.take(limit).toList();
-  print("found ${noteIds.length} notes. Processing...");
+  print("Found ${noteIds.length} notes. Processing...");
 
   // Get Note Details
   final notesResponse = await _ankiRequest('notesInfo', {
@@ -39,17 +39,32 @@ Future<void> main() async {
   Directory('assets/json').createSync(recursive: true);
 
   int count = 0;
+  int skipped = 0; // Keep track of how many cards were broken
 
   for (var note in notes) {
     var fields = note['fields'];
 
-    // FIELD MAPS
-    // ('Word', 'Sentence') to match Anki Field names exactly
-    String word = fields['Word']['value'];
-    String reading = fields['Word Reading']['value'];
-    String meaning = fields['Word Meaning']['value'];
-    String sentence = fields['Sentence']['value'];
-    String rawAudio = fields['Word Audio']['value']; // audio files stored with each word already
+    // FIELD MAPS (Using ?. fallback just in case a field key completely doesn't exist)
+    String word = fields['Word']?['value'] ?? '';
+    String reading = fields['Transliteration']?['value'] ?? '';
+    String meaning = fields['Meaning']?['value'] ?? '';
+    String sentence = fields['Example Sentence']?['value'] ?? '';
+    String rawAudio = fields['Word Audio']?['value'] ?? '';
+    String pitch = fields['Pitch Accent']?['value'] ?? '';
+
+    // THE FILTER
+    // If ANY of these strings are completely empty, or say "No data available", skip this card!
+    if (word.trim().isEmpty ||
+        reading.trim().isEmpty ||
+        meaning.trim().isEmpty ||
+        sentence.trim().isEmpty ||
+        rawAudio.trim().isEmpty ||
+        pitch.trim().isEmpty ||
+        pitch.contains('No data available')) { // PLACEHOLDER CARDS
+
+      skipped++;
+      continue; // Jumps to the next card in the loop
+    }
 
     // Clean Audio Filename
     String audioFilename = rawAudio.replaceAll('[sound:', '').replaceAll(']', '');
@@ -66,22 +81,25 @@ Future<void> main() async {
       'meaning': _cleanHtml(meaning),
       'sentence': _cleanHtml(sentence),
       'audio': audioFilename,
+      'pitch': pitch, // Passed raw, keeps any OJAD formatting
     });
 
     count++;
-    stdout.write("\rProcessed $count / ${noteIds.length}");
+    stdout.write("\rProcessed: $count | Skipped: $skipped / ${noteIds.length}");
   }
 
   // Save JSON file
   final jsonFile = File('assets/json/cards.json');
   await jsonFile.writeAsString(jsonEncode(jsonOutput));
 
-  print("\n\nSaved $count cards to assets/json/cards.json");
+  print("\n\nSaved $count perfect cards to assets/json/cards.json");
+  if (skipped > 0) {
+    print("Threw away $skipped cards because they were missing data.");
+  }
   print("Audio files saved to assets/audio/");
 }
 
 // --- HELPER FUNCTIONS FOR ANKI CONNECT---
-
 Future<Map<String, dynamic>> _ankiRequest(String action, Map<String, dynamic> params) async {
   final response = await http.post(
     Uri.parse('http://127.0.0.1:8765'),
@@ -92,7 +110,6 @@ Future<Map<String, dynamic>> _ankiRequest(String action, Map<String, dynamic> pa
 
 Future<void> _saveAudioFile(String filename) async {
   try {
-    // Retrieve media from Anki for the actual file content
     final response = await _ankiRequest('retrieveMediaFile', {'filename': filename});
     final String? base64Data = response['result'];
 
@@ -107,6 +124,5 @@ Future<void> _saveAudioFile(String filename) async {
 }
 
 String _cleanHtml(String input) {
-  // Removes simple HTML tags like <div> or <b> if Anki has them
   return input.replaceAll(RegExp(r'<[^>]*>'), '');
 }
