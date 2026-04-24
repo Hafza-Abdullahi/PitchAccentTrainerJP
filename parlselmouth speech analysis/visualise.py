@@ -305,7 +305,6 @@ def process_audio():
 
         # TRIM DEAD AIR AND MIC CLICKS
         if temp_user_wav: trim_audio_file(temp_user_wav)
-        if temp_native_wav: trim_audio_file(temp_native_wav)
 
         # THE SIAMESE AI GRADING BLOCK
         ai_val = 0.0
@@ -341,12 +340,12 @@ def process_audio():
 
         response = send_file(img_buffer, mimetype="image/png")
 
-        # Send headers back to Flutter
-        response.headers["X-Transcription"] = urllib.parse.quote(transcription)
-        response.headers["X-Transcription-Romaji"] = urllib.parse.quote(romaji)
-        response.headers["X-Combined-Score"] = urllib.parse.quote(final_combined_score) # Send the AI and DTW combined score as the main feedback, not just the AI score alone
-        response.headers["X-AI-Score"] = urllib.parse.quote(ai_val)
-        response.headers["X-DTW-Score"] = urllib.parse.quote(dtw_val)
+        # Send headers back to Flutter safely
+        response.headers["X-Transcription"] = urllib.parse.quote(str(transcription))
+        response.headers["X-Transcription-Romaji"] = urllib.parse.quote(str(romaji))
+        response.headers["X-AI-Score"] = urllib.parse.quote(str(final_combined_score)) # Send the AI and DTW combined score as the main feedback, not just the AI score alone
+        response.headers["X-AI-Score"] = urllib.parse.quote(str(ai_val))
+        response.headers["X-DTW-Score"] = urllib.parse.quote(str(dtw_val))
         return response
 
     except Exception as e:

@@ -488,7 +488,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                       const SizedBox(height: 15),
 
-                                      // --- NEW GREEN AI SCORE BOX ---
+                                      // --- NEW GREEN total SCORE BOX ---
                                       if (_combinedScore.isNotEmpty)
                                         Container(
                                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
@@ -498,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             borderRadius: BorderRadius.circular(12),
                                           ),
                                           child: Text(
-                                            "AI Match Score: $_combinedScore",
+                                            "Combined Score: $_combinedScore",
                                             style: TextStyle(
                                               fontSize: 22,
                                               fontWeight: FontWeight.bold,
@@ -515,7 +515,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
                                           decoration: BoxDecoration(
                                             color: Colors.green.shade50,
-                                            border: Border.all(color: Colors.green.shade400, width: 2),
+                                            border: Border.all(color: Colors.blue.shade400, width: 2),
                                             borderRadius: BorderRadius.circular(12),
                                           ),
                                           child: Text(
@@ -523,7 +523,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             style: TextStyle(
                                               fontSize: 22,
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.green.shade700,
+                                              color: Colors.blue.shade700,
                                             ),
                                           ),
                                         ),
@@ -537,15 +537,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
                                           decoration: BoxDecoration(
                                             color: Colors.green.shade50,
-                                            border: Border.all(color: Colors.green.shade400, width: 2),
+                                            border: Border.all(color: Colors.orange.shade400, width: 2),
                                             borderRadius: BorderRadius.circular(12),
                                           ),
                                           child: Text(
-                                            "AI Match Score: $_dtwScore",
+                                            "OverLap Score: $_dtwScore",
                                             style: TextStyle(
                                               fontSize: 22,
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.green.shade700,
+                                              color: Colors.orange.shade700,
                                             ),
                                           ),
                                         ),
