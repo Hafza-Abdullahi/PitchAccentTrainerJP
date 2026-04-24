@@ -251,9 +251,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Call the controller (Returns PitchAnalysisResult object)
     final PitchAnalysisResult? result = await _pitchController.analyzeAudio(
-        audioFile: _droppedFile,
-        audioPath: _userRecordingPath,
-        nativeAudioPath: 'assets/audio/$fixedFileName', targetRomaji: currentCard.wordReading );
+      audioFile: _droppedFile,
+      audioPath: _userRecordingPath,
+      nativeAudioPath: 'assets/audio/$fixedFileName',
+      targetRomaji: currentCard.word.trim(), //
+    );
     print("You scored: ${result?.aiScore}");
 
     setState(() {
