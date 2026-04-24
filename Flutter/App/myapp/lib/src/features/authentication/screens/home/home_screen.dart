@@ -142,15 +142,19 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       if (await _audioRecorder.hasPermission()) {
         if (kIsWeb) {
+          print("WEB: attempting to record");
+          // WEB: Universal WAV format
           await _audioRecorder.start(
-              const RecordConfig(encoder: AudioEncoder.opus),
+              const RecordConfig(encoder: AudioEncoder.wav),
               path: ''
           );
         } else {
+          print("Mobile: attempting to record");
+          // MOBILE: Universal WAV format
           final dir = await getTemporaryDirectory();
-          String path = '${dir.path}/user_practice.m4a';
+          String path = '${dir.path}/user_practice.wav';
           await _audioRecorder.start(
-              const RecordConfig(encoder: AudioEncoder.aacLc),
+              const RecordConfig(encoder: AudioEncoder.wav),
               path: path
           );
         }

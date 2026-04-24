@@ -29,7 +29,7 @@ import io
 import os
 import tempfile
 
-# converting webM  to wav for site
+# converting webM to wav for site
 from pydub import AudioSegment
 
 # for reading and writing audio files
@@ -243,7 +243,6 @@ def get_alignment_score(native_path, user_path):
         return 0
     
 
-
 #flask app 
 
 #health check
@@ -252,12 +251,12 @@ def health_check():
     return "Pitch Accent API is Live ", 200
 
 @app.route("/process-audio", methods=["POST"])
-   
+    
 def process_audio():
 # Initialize all temp variables to None immediately
-    temp_user_webm = None
+    temp_user_raw = None
     temp_user_wav = None
-    temp_native_mp3 = None
+    temp_native_raw = None
     temp_native_wav = None
 
     if "files" not in request.files:
@@ -268,39 +267,44 @@ def process_audio():
         user_file = request.files.getlist("files")[0]
         native_file = request.files.get("native_audio")
 
-        # 1. Save and Convert User Audio
-        suffix = os.path.splitext(user_file.filename)[1] or ".webm"
-        t_user = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+        # 1. Save User Audio
+        user_suffix = os.path.splitext(user_file.filename)[1].lower() or ".webm"
+        t_user = tempfile.NamedTemporaryFile(delete=False, suffix=user_suffix)
         user_file.save(t_user.name)
         t_user.close()
-        temp_user_webm = t_user.name
+        temp_user_raw = t_user.name
 
-        # CONVERT TO WAV using FFmpeg
-        temp_user_wav = t_user.name + ".wav"
-        try:
-            audio = AudioSegment.from_file(temp_user_webm)
-            audio.export(temp_user_wav, format="wav")
-        except Exception as conv_err:
-            print(f"FFmpeg Conversion Failed: {conv_err}")
-            # If conversion fails, fallback to using raw file
-            temp_user_wav = temp_user_webm 
+        # Skip conversion if it's already a WAV
+        if user_suffix == ".wav":
+            temp_user_wav = temp_user_raw
+        else:
+            temp_user_wav = temp_user_raw + ".wav"
+            try:
+                audio = AudioSegment.from_file(temp_user_raw)
+                audio.export(temp_user_wav, format="wav")
+            except Exception as conv_err:
+                print(f"FFmpeg Conversion Failed: {conv_err}")
+                temp_user_wav = temp_user_raw 
 
         # 2. Save Native Audio (if provided by Flutter)
         if native_file:
-            t_native = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            native_suffix = os.path.splitext(native_file.filename)[1].lower() or ".mp3"
+            t_native = tempfile.NamedTemporaryFile(delete=False, suffix=native_suffix)
             native_file.save(t_native.name)
             t_native.close()
-            temp_native_mp3 = t_native.name
+            temp_native_raw = t_native.name
 
-            # convrt to wav for processing
-            temp_native_wav = t_native.name + ".wav"
-            try:
-                # Convert the Anki MP3 into a WAV file so Parselmouth can read it
-                native_audio_seg = AudioSegment.from_file(temp_native_mp3)
-                native_audio_seg.export(temp_native_wav, format="wav")
-            except Exception as conv_err:
-                print(f"FFmpeg Native Conversion Failed: {conv_err}")
-                temp_native_wav = temp_native_mp3
+            # Skip conversion if it's already a WAV
+            if native_suffix == ".wav":
+                temp_native_wav = temp_native_raw
+            else:
+                temp_native_wav = temp_native_raw + ".wav"
+                try:
+                    native_audio_seg = AudioSegment.from_file(temp_native_raw)
+                    native_audio_seg.export(temp_native_wav, format="wav")
+                except Exception as conv_err:
+                    print(f"FFmpeg Native Conversion Failed: {conv_err}")
+                    temp_native_wav = temp_native_raw
 
 
         # 3. Google Transcription
@@ -355,7 +359,7 @@ def process_audio():
                     prediction = siamese_model.predict([n_mat, u_mat], verbose=0)
                     ai_val = float(prediction[0][0] * 100)
 
-                # Get DTW Score [cite: 612-618]
+                # Get DTW Score
                 dtw_val = get_alignment_score(temp_native_wav, temp_user_wav)
 
                 # Weighted Average: 60% DTW (Pattern) + 40% AI (Nuance)
@@ -391,9 +395,12 @@ def process_audio():
     
     finally:
         # Cleanup all temp files so your server doesn't crash from full memory
-        if temp_user_webm and os.path.exists(temp_user_webm): os.remove(temp_user_webm)
-        if temp_user_wav and os.path.exists(temp_user_wav): os.remove(temp_user_wav)
-        if temp_native_wav and os.path.exists(temp_native_wav): os.remove(temp_native_wav)
+        for temp_file in [temp_user_raw, temp_user_wav, temp_native_raw, temp_native_wav]:
+            if temp_file and os.path.exists(temp_file):
+                try:
+                    os.remove(temp_file)
+                except Exception:
+                    pass
 
 
 print("=======================================")
