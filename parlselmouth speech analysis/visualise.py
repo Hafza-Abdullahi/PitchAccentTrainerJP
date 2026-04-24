@@ -317,15 +317,15 @@ def process_audio():
             with sr.AudioFile(temp_user_wav) as source:
                 audio_data = recognizer.record(source)
                 transcription = recognizer.recognize_google(audio_data, language="ja-JP")
-                print(f"Google heard: {transcription}")
+                print(f"Google heard: {transcription}", flush=True)
 
         # more detailed error handling for speech recognition
         except sr.UnknownValueError:
-            print("Google Speech: Format is fine, but couldn't recognize any Japanese words.")
+            print("Google Speech: Format is fine, but couldn't recognize any Japanese words.", flush=True)
             transcription = "Could not understand audio"
         # catch all other exceptions to prevent server crash and provide feedback
         except Exception as sr_err:
-            print(f"GOOGLE SPEECH CRASHED: {sr_err}")
+            print(f"GOOGLE SPEECH CRASHED: {sr_err}", flush=True)
             transcription = "Could not understand audio"
 
         # 4. Kakasi Romaji
@@ -335,7 +335,7 @@ def process_audio():
             result = kks.convert(transcription)
             romaji = " ".join([item['hepburn'] for item in result])
         except Exception as kakasi_err:
-            print(f"KAKASI ROMAJI CRASHED: {kakasi_err}")
+            print(f"KAKASI ROMAJI CRASHED: {kakasi_err}", flush=True)
             romaji = "Error"
         else:
             word_match_ratio = 1.0 # Default
@@ -345,12 +345,13 @@ def process_audio():
             if target_romaji and romaji and romaji != "Error":
                 # Compare what Google heard to the Anki Card's target word
                 word_match_ratio = SequenceMatcher(None, target_romaji.lower(), romaji.lower()).ratio()
-                print(f"Soft Gatekeeper Similarity Match: {word_match_ratio * 100:.1f}%")
+                print(f"Soft Gatekeeper Similarity Match: {word_match_ratio * 100:.1f}%", flush=True)
 
             if temp_user_wav and temp_native_wav:
                 # Did they fail the gatekeeper? (< 80% match)
+                print("word_match_ratio:", word_match_ratio, "target_romaji:", target_romaji, "romaji:", romaji, flush=True)
                 if word_match_ratio < 0.8 and target_romaji != "":
-                    print("Gatekeeper Failed: They said the wrong word. Grade dropped to 0%.")
+                    print("Gatekeeper Failed: They said the wrong word. Grade dropped to 0%.", flush=True)
                     total = 0.0
                     ai_val = 0.0
                     dtw_val = 0.0
@@ -400,7 +401,7 @@ def process_audio():
         return response
 
     except Exception as e:
-        print(f"Server Error: {e}")
+        print(f"Server Error: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
     
     finally:
@@ -420,7 +421,7 @@ try:
     print("Loading Pitch Accent AI...")
     # Make sure you keep your custom_objects fix here!
     siamese_model = load_model("pitch_accent_model.keras", compile=False, safe_mode=False, custom_objects={'K': K})
-    print("Model loaded successfully!")
+    print("Model loaded successfully!",)
 except Exception as e:
     print(f"Error loading model (AI grading disabled): {e}")
     siamese_model = None
