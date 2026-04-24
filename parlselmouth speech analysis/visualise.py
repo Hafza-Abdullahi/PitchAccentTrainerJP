@@ -50,6 +50,9 @@ import urllib.parse
 # font that accepts jp
 import matplotlib.font_manager as fm 
 
+import logging
+logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
+
 
 # register the custom layer so it can be loaded with the model later without crashing
 @tf.keras.utils.register_keras_serializable()
@@ -60,7 +63,7 @@ def abs_diff(tensors):
 matplotlib.use('Agg')
 
 # font for matplot 
-plt.rcParams['font.family'] = ['MS Gothic', 'Meiryo', 'Yu Gothic', 'sans-serif', "Noto Sans CJK JP"] 
+plt.rcParams['font.family'] = ['Noto Sans CJK JP', 'sans-serif']
 
 app = Flask(__name__)
 # This allows your Flutter app from ANY URL to talk to this server
