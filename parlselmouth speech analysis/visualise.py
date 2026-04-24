@@ -195,34 +195,51 @@ def get_alignment_score(native_path, user_path):
     try:
         if not native_path or not user_path:
             return 0
+            
+        # Extract pitch like the graph does
+        snd_n = parselmouth.Sound(native_path)
+        pitch_n = snd_n.to_pitch()
+        freqs_n = pitch_n.selected_array["frequency"]
+
+        snd_u = parselmouth.Sound(user_path)
+        pitch_u = snd_u.to_pitch()
+        freqs_u = pitch_u.selected_array["frequency"]
+
+        # Smooth them slightly to ignore mic static
+        smooth_n = moving_average(freqs_n, window_size=8)
+        smooth_u = moving_average(freqs_u, window_size=8)
+
+        # Find the "Rubber Band" alignment
+        D, wp = librosa.sequence.dtw(X=smooth_n, Y=smooth_u, backtrack=True)
+
+        # calculate "Overlap" Logic
+        touching_frames = 0
+        active_frames = 0
+
+        # Look at every aligned point on the graph
+        for n_idx, u_idx in wp:
+            f_n = smooth_n[n_idx]
+            f_u = smooth_u[u_idx]
+
+            # Only grade the frames where the Native Speaker is actually talking (not silence)
+            if f_n > 0:
+                active_frames += 1
+                
+                # If your voice is also active AND within 30 Hz of the native speaker, it counts as a "touching frame" that gets you points for mimicking the pitch closely
+                if f_u > 0 and abs(f_n - f_u) <= 30:
+                    touching_frames += 1
+
+        # Prevent division by zero if the audio is completely silent
+        if active_frames == 0:
+            return 0.0
+
+        # Calculate the pure percentage of overlapping lines
+        overlap_score = (touching_frames / active_frames) * 100.0
         
-        # Load both files
-        y_n, sr_n = librosa.load(native_path, sr=None)
-        y_u, sr_u = librosa.load(user_path, sr=None)
-
-        # Extract MFCCs
-        mfcc_n = librosa.feature.mfcc(y=y_n, sr=sr_n)
-        mfcc_u = librosa.feature.mfcc(y=y_u, sr=sr_u)
-
-        # Normalize the data so volume differences don't ruin the math
-        mfcc_n = librosa.util.normalize(mfcc_n)
-        mfcc_u = librosa.util.normalize(mfcc_u)
-
-        # Calculate DTW Distance
-        D, wp = librosa.sequence.dtw(X=mfcc_n, Y=mfcc_u, backtrack=True)
+        return min(100.0, overlap_score)
         
-        # Get the average distance per step
-        dist = D[-1, -1] / len(wp)
-
-        # Adjusted math to be much fairer to human voices
-        # Normalized distance usually hovers around 5 to 20. 
-        dtw_score = max(0.0, 100.0 - (dist * 3.0)) 
-        
-        # Cap it at 100% just in case
-        return min(100.0, dtw_score) 
-
     except Exception as e:
-        print(f"DTW Failed: {e}")
+        print(f"Overlap Score Failed: {e}")
         return 0
     
 
