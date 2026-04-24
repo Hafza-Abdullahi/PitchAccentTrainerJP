@@ -253,7 +253,7 @@ def health_check():
 @app.route("/process-audio", methods=["POST"])
     
 def process_audio():
-# Initialize all temp variables to None immediately
+# Initialize all temp variables to None immediately,
     temp_user_raw = None
     temp_user_wav = None
     temp_native_raw = None
