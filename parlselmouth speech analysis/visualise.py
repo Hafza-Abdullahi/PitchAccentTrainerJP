@@ -66,7 +66,7 @@ app = Flask(__name__)
 # This allows your Flutter app from ANY URL to talk to this server
 siamese_model = None # global variable to hold the AI model in memory after loading it once
 
-CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers=["X-Transcription", "X-Transcription-Romaji", "X-AI-Score"])
+CORS(app, resources={r"/*": {"origins": "*"}}, expose_headers=["X-Transcription", "X-Transcription-Romaji", "X-AI-Score", "X-DTW-Score", "X-Combined-Score" ]) # Expose custom headers to Flutter so it can read the AI score and transcriptions
 
 # Load Siamese Machine Learning Model for Audio Comparision
 #try:
@@ -343,7 +343,7 @@ def process_audio():
         # Send headers back to Flutter safely
         response.headers["X-Transcription"] = urllib.parse.quote(str(transcription))
         response.headers["X-Transcription-Romaji"] = urllib.parse.quote(str(romaji))
-        response.headers["X-AI-Score"] = urllib.parse.quote(str(final_combined_score)) # Send the AI and DTW combined score as the main feedback, not just the AI score alone
+        response.headers["X-Combined-Score"] = urllib.parse.quote(str(final_combined_score)) # Send the AI and DTW combined score as the main feedback, not just the AI score alone
         response.headers["X-AI-Score"] = urllib.parse.quote(str(ai_val))
         response.headers["X-DTW-Score"] = urllib.parse.quote(str(dtw_val))
         return response

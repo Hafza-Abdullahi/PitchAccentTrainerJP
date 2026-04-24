@@ -222,8 +222,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Call the controller (Returns PitchAnalysisResult object)
     final PitchAnalysisResult? result = await _pitchController.analyzeAudio(
-      audioFile: _droppedFile,
-      audioPath: _userRecordingPath,
+        audioFile: _droppedFile,
+        audioPath: _userRecordingPath,
         nativeAudioPath: 'assets/audio/$fixedFileName'
     );
     print("You scored: ${result?.aiScore}");
@@ -298,9 +298,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       print("Demo file loaded: $fileName");
-
-      // Optional: Auto-analyze immediately?
-      // _generateGraph();
 
     } catch (e) {
       print("Error loading demo asset: $e");
@@ -488,69 +485,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                       const SizedBox(height: 15),
 
-                                      // --- NEW GREEN total SCORE BOX ---
-                                      if (_combinedScore.isNotEmpty)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green.shade50,
-                                            border: Border.all(color: Colors.green.shade400, width: 2),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            "Combined Score: $_combinedScore",
-                                            style: TextStyle(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.green.shade700,
+                                      // --- NEW 3-BOX ROW (Combined, AI, DTW) ---
+                                      Row(
+                                        children: [
+                                          if (_combinedScore.isNotEmpty)
+                                            Expanded(
+                                              child: _scoreBox("Combined", _combinedScore, Colors.green),
                                             ),
-                                          ),
-                                        ),
+                                          if (_combinedScore.isNotEmpty && _aiScore.isNotEmpty)
+                                            const SizedBox(width: 8),
 
-                                      if (_combinedScore.isNotEmpty) const SizedBox(height: 15),
-
-                                      // --- NEW Blue DTW SCORE BOX ---
-                                      if (_aiScore.isNotEmpty)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green.shade50,
-                                            border: Border.all(color: Colors.blue.shade400, width: 2),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            "AI Match Score: $_aiScore",
-                                            style: TextStyle(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.blue.shade700,
+                                          if (_aiScore.isNotEmpty)
+                                            Expanded(
+                                              child: _scoreBox("AI Match", _aiScore, Colors.blue),
                                             ),
-                                          ),
-                                        ),
+                                          if (_aiScore.isNotEmpty && _dtwScore.isNotEmpty)
+                                            const SizedBox(width: 8),
 
-                                      if (_aiScore.isNotEmpty) const SizedBox(height: 15),
-                                      // ------------------------------
-
-                                      // --- NEW orange DTW SCORE BOX ---
-                                      if (_dtwScore.isNotEmpty)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green.shade50,
-                                            border: Border.all(color: Colors.orange.shade400, width: 2),
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            "OverLap Score: $_dtwScore",
-                                            style: TextStyle(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.orange.shade700,
+                                          if (_dtwScore.isNotEmpty)
+                                            Expanded(
+                                              child: _scoreBox("OverLap", _dtwScore, Colors.orange),
                                             ),
-                                          ),
-                                        ),
+                                        ],
+                                      ),
 
-                                      if (_dtwScore.isNotEmpty) const SizedBox(height: 15),
+                                      const SizedBox(height: 15),
+
                                       // Transcription Text using google speech to text
                                       Text(
                                         "Detected: $_detectedRomaji",
@@ -631,6 +591,47 @@ class _HomeScreenState extends State<HomeScreen> {
       style: OutlinedButton.styleFrom(
         foregroundColor: Colors.purple,
         side: const BorderSide(color: Colors.purple),
+      ),
+    );
+  }
+
+  // --- Helper function for Score Boxes ---
+  Widget _scoreBox(String label, String score, MaterialColor color) {
+    String displayScore = score;
+    // Logic to trim the long decimal if it's a raw number string
+    if (double.tryParse(score.replaceAll('%', '')) != null) {
+      displayScore = "${double.parse(score.replaceAll('%', '')).toStringAsFixed(1)}%";
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      decoration: BoxDecoration(
+        color: color.shade50,
+        border: Border.all(color: color.shade400, width: 2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+                fontSize: 12,
+                color: color.shade700,
+                fontWeight: FontWeight.bold
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            displayScore,
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color.shade900
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
