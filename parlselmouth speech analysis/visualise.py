@@ -325,8 +325,6 @@ def process_audio():
             # Weighted Average: 60% DTW (Pattern) + 40% AI (Nuance)
             total = (dtw_val * 0.6) + (ai_val * 0.4)
             final_combined_score = f"{total:.1f}%"
-
-            # Change your print line to this:
         
         
         print(f"Scores -> AI: {ai_val:.1f} | DTW: {dtw_val:.1f} | Final: {final_combined_score}", flush=True)
@@ -346,8 +344,9 @@ def process_audio():
         # Send headers back to Flutter
         response.headers["X-Transcription"] = urllib.parse.quote(transcription)
         response.headers["X-Transcription-Romaji"] = urllib.parse.quote(romaji)
-        response.headers["X-AI-Score"] = urllib.parse.quote(final_combined_score) # Send the AI and DTW combined score as the main feedback, not just the AI score alone
-        
+        response.headers["X-Combined-Score"] = urllib.parse.quote(final_combined_score) # Send the AI and DTW combined score as the main feedback, not just the AI score alone
+        response.headers["X-AI-Score"] = urllib.parse.quote(ai_val)
+        response.headers["X-DTW-Score"] = urllib.parse.quote(dtw_val)
         return response
 
     except Exception as e:
