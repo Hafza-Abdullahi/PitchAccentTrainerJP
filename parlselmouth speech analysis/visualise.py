@@ -193,26 +193,34 @@ def showPitchOnGraph(*audio_files, word_label="Unknown"):
 
 def get_alignment_score(native_path, user_path):
     try:
+        if not native_path or not user_path:
+            return 0
+        
         # Load both files
         y_n, sr_n = librosa.load(native_path, sr=None)
         y_u, sr_u = librosa.load(user_path, sr=None)
 
-        # Extract MFCCs (Mel-frequency cepstral coefficients) which are commonly used features for audio comparison
+        # Extract MFCCs
         mfcc_n = librosa.feature.mfcc(y=y_n, sr=sr_n)
         mfcc_u = librosa.feature.mfcc(y=y_u, sr=sr_u)
 
+        # Normalize the data so volume differences don't ruin the math
+        mfcc_n = librosa.util.normalize(mfcc_n)
+        mfcc_u = librosa.util.normalize(mfcc_u)
+
         # Calculate DTW Distance
-        # X is the native (reference), Y is the user (target)
         D, wp = librosa.sequence.dtw(X=mfcc_n, Y=mfcc_u, backtrack=True)
         
-        # Normalize the distance (Lower is better)
-        # We divide by the length of the warping path so long words aren't penalized
+        # Get the average distance per step
         dist = D[-1, -1] / len(wp)
 
-        # Convert distance to a 0-100 Score
-        # (Heuristic: 0-20 is usually a great match, 50+ is poor)
-        dtw_score = max(0, 100 - (dist * 1.5)) 
-        return dtw_score
+        # Adjusted math to be much fairer to human voices
+        # Normalized distance usually hovers around 5 to 20. 
+        dtw_score = max(0.0, 100.0 - (dist * 3.0)) 
+        
+        # Cap it at 100% just in case
+        return min(100.0, dtw_score) 
+
     except Exception as e:
         print(f"DTW Failed: {e}")
         return 0
