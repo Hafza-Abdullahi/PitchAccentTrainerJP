@@ -31,7 +31,7 @@ class WordCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(tCardPadding),
             decoration: BoxDecoration(
-              color: tCardBgWord, // Make sure this is defined in colours.dart
+              color: tCardBgWord, // Background color for the word section
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(tCardRadius),
                 topRight: Radius.circular(tCardRadius),
@@ -61,13 +61,55 @@ class WordCard extends StatelessWidget {
             ),
           ),
 
-          /// --- AUDIO BUTTON SECTION ---
+          /// --- NATIVE AUDIO BUTTON SECTION ---
           if (card.wordAudio.isNotEmpty)
-            Container(
-              color: Colors.grey.withOpacity(0.1),
-              child: IconButton(
-                icon: const Icon(Icons.volume_up_rounded, color: tPrimaryColor),
-                onPressed: onPlayAudio,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Center(
+                // StatefulBuilder allows for local state management (hover) in a stateless widget
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    bool isHovered = false;
+                    return MouseRegion(
+                      onEnter: (_) => setState(() => isHovered = true),
+                      onExit: (_) => setState(() => isHovered = false),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        decoration: BoxDecoration(
+                          // Changes background opacity based on hover state
+                          color: isHovered
+                              ? Colors.purple.withOpacity(0.15)
+                              : Colors.purple.withOpacity(0.05),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            // Changes border visibility based on hover state
+                            color: isHovered ? Colors.purple : Colors.purple.withOpacity(0.3),
+                            width: 2,
+                          ),
+                          boxShadow: isHovered ? [
+                            BoxShadow(
+                              color: Colors.purple.withOpacity(0.1),
+                              blurRadius: 8,
+                              spreadRadius: 2,
+                            )
+                          ] : [],
+                        ),
+                        child: InkWell(
+                          onTap: onPlayAudio,
+                          borderRadius: BorderRadius.circular(50),
+                          child: const Padding(
+                            padding: EdgeInsets.all(12.0),
+                            child: Icon(
+                              Icons.volume_up_rounded,
+                              color: Colors.purple,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
 

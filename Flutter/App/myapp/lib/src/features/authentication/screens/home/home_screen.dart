@@ -368,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
 
                                 //  Pitch Accent Display
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 15),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -376,12 +376,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Expanded(
                                       child: Html(
                                         data: currentCard.pitch
-                                                .split('</td></tr>')
-                                                .first
-                                                .replaceAll(
-                                                    RegExp(
-                                                        r'<table[^>]*>.*?<td>.*?</td><td>'),
-                                                    '<div class="pitch-box">') +
+                                            .split('</td></tr>')
+                                            .first
+                                            .replaceAll(
+                                            RegExp(
+                                                r'<table[^>]*>.*?<td>.*?</td><td>'),
+                                            '<div class="pitch-box">') +
                                             '</div>',
                                         style: {
                                           // Default text is BLACK / SMALL (Low Pitch)
@@ -433,9 +433,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                   ],
                                 ),
-                                // --------------------------------
-                                const SizedBox(height: 20),
-                                // --------------------------------------------
 
                                 const SizedBox(height: 20),
 
@@ -494,9 +491,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                         }
                                       },
                                       onDragEntered: (details) => setState(
-                                          () => _isHoveringDropZone = true),
+                                              () => _isHoveringDropZone = true),
                                       onDragExited: (details) => setState(
-                                          () => _isHoveringDropZone = false),
+                                              () => _isHoveringDropZone = false),
                                       child: InkWell(
                                         onTap: _pickFile,
                                         borderRadius: BorderRadius.circular(50),
@@ -507,13 +504,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                             color: _isHoveringDropZone
                                                 ? Colors.blue.shade100
                                                 : (_droppedFile != null
-                                                    ? Colors.green.shade100
-                                                    : Colors.white),
+                                                ? Colors.green.shade100
+                                                : Colors.white),
                                             shape: BoxShape.circle,
                                             border: _isHoveringDropZone
                                                 ? Border.all(
-                                                    color: Colors.blue,
-                                                    width: 2)
+                                                color: Colors.blue,
+                                                width: 2)
                                                 : null,
                                             boxShadow: [
                                               BoxShadow(
@@ -538,7 +535,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                     // Playback
                                     if ((_userRecordingPath != null ||
-                                            _droppedFile != null) &&
+                                        _droppedFile != null) &&
                                         !_isRecording)
                                       ElevatedButton.icon(
                                         onPressed: _playUserContent,
@@ -580,7 +577,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                 /*----------------- ANALYZE SECTION -----------------*/
                                 if ((_userRecordingPath != null ||
-                                        _droppedFile != null) &&
+                                    _droppedFile != null) &&
                                     !_isRecording)
                                   ElevatedButton(
                                     onPressed: _isAnalyzing
@@ -591,23 +588,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                       foregroundColor: Colors.white,
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 40, vertical: 15),
-                                      // 👈 Horizontal padding for "fit content"
+                                      // Horizontal padding for "fit content"
                                       shape: RoundedRectangleBorder(
                                           borderRadius:
-                                              BorderRadius.circular(10)),
+                                          BorderRadius.circular(10)),
                                     ),
                                     child: _isAnalyzing
                                         ? const SizedBox(
-                                            height: 20,
-                                            width: 20,
-                                            child: CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2))
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2))
                                         : const Text("Analyze Pitch",
-                                            style: TextStyle(fontSize: 18)),
+                                        style: TextStyle(fontSize: 18)),
                                   ),
 
-                                const SizedBox(height: 20),
 
                                 /*----------------- RESULT GRAPH & TEXT -----------------*/
                                 if (_graphImage != null)
@@ -616,15 +612,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                       Container(
                                         // Dynamic height based on screen width
                                         height:
-                                            MediaQuery.of(context).size.width >
-                                                    600
-                                                ? 550
-                                                : 400,
+                                        MediaQuery.of(context).size.width >
+                                            600
+                                            ? 550
+                                            : 400,
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
                                           borderRadius:
-                                              BorderRadius.circular(15),
+                                          BorderRadius.circular(15),
                                           border: Border.all(
                                               color: Colors.grey.shade300,
                                               width: 1),
@@ -639,7 +635,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                         child: ClipRRect(
                                           borderRadius:
-                                              BorderRadius.circular(15),
+                                          BorderRadius.circular(15),
                                           child: Image.memory(
                                             _graphImage!,
                                             fit: BoxFit.contain,
@@ -710,13 +706,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           backgroundColor: tPrimaryColor,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 50, vertical: 15),
-                          // 👈 Centered, content-sized
+                          // Centered, content-sized
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
                         ),
                         child: const Text("Next Word",
                             style:
-                                TextStyle(fontSize: 18, color: Colors.white)),
+                            TextStyle(fontSize: 18, color: Colors.white)),
                       ),
                       // --- TRY AGAIN Pop Up ---
                       AnimatedSize(
@@ -740,7 +736,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             label: const Text("Word not recognized - Try Again", style: TextStyle(fontSize: 18, color: Colors.white)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.redAccent,
-                              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15), // 👈 Padding instead of double.infinity
+                              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15), // Padding instead of double.infinity
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                           ),
@@ -798,7 +794,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Logic to trim the long decimal if it's a raw number string
     if (double.tryParse(score.replaceAll('%', '')) != null) {
       displayScore =
-          "${double.parse(score.replaceAll('%', '')).toStringAsFixed(1)}%";
+      "${double.parse(score.replaceAll('%', '')).toStringAsFixed(1)}%";
     }
 
     return Container(
