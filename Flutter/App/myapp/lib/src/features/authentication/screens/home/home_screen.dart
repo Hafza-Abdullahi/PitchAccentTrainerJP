@@ -78,7 +78,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-
   /******************** FILE PICKER LOGIC *******************/
   Future<void> _pickFile() async {
     try {
@@ -140,32 +139,44 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      if (await _audioRecorder.hasPermission()) {
+      print("Checking microphone permissions...");
+      bool hasPerm = await _audioRecorder.hasPermission();
+
+      if (hasPerm) {
         if (kIsWeb) {
-          print("WEB: attempting to record");
-          // WEB: Universal WAV format
-          await _audioRecorder.start(
-              const RecordConfig(encoder: AudioEncoder.wav),
-              path: ''
-          );
+          print("WEB: attempting to record in native browser format");
+          // Leaving RecordConfig empty forces the browser to use its native default
+          // (WebM for Edge/Chrome, MP4 for Safari)
+          await _audioRecorder.start(const RecordConfig(), path: '');
         } else {
-          print("Mobile: attempting to record");
-          // MOBILE: Universal WAV format
+          print("MOBILE: attempting to record");
           final dir = await getTemporaryDirectory();
-          String path = '${dir.path}/user_practice.wav';
+          // Back to .m4a because mobile natively prefers it (Python server will convert it!)
+          String path = '${dir.path}/user_practice.m4a';
           await _audioRecorder.start(
-              const RecordConfig(encoder: AudioEncoder.wav),
-              path: path
-          );
+              const RecordConfig(encoder: AudioEncoder.aacLc),
+              path: path);
         }
 
         setState(() {
           _isRecording = true;
           _userRecordingPath = null;
         });
+        print("Recording successfully started!");
+      } else {
+        //
+        print("ERROR: Microphone permission was denied!");
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              "Mic permission blocked! Click the lock icon in your browser's URL bar to allow it."),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ));
       }
     } catch (e) {
       print("Error starting record: $e");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("System Error: $e"), backgroundColor: Colors.red));
     }
   }
 
@@ -209,9 +220,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Validation
     if (_droppedFile == null && _userRecordingPath == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please record or upload audio first."))
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Please record or upload audio first.")));
       return;
     }
 
@@ -229,8 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final PitchAnalysisResult? result = await _pitchController.analyzeAudio(
         audioFile: _droppedFile,
         audioPath: _userRecordingPath,
-        nativeAudioPath: 'assets/audio/$fixedFileName'
-    );
+        nativeAudioPath: 'assets/audio/$fixedFileName');
     print("You scored: ${result?.aiScore}");
 
     setState(() {
@@ -245,11 +254,10 @@ class _HomeScreenState extends State<HomeScreen> {
         _combinedScore = result.combinedScore;
         _dtwScore = result.dtwScore;
 
-        print("DETECTED WORDS $_detectedKanji $_detectedRomaji" );
+        print("DETECTED WORDS $_detectedKanji $_detectedRomaji");
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Analysis failed. Check server."))
-        );
+            const SnackBar(content: Text("Analysis failed. Check server.")));
       }
     });
   }
@@ -303,7 +311,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       print("Demo file loaded: $fileName");
-
     } catch (e) {
       print("Error loading demo asset: $e");
     }
@@ -323,7 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         body: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
+            constraints: const BoxConstraints(maxWidth: 1000),
             child: FutureBuilder<List<AnkiCardModel>>(
               future: _cardsFuture,
               builder: (context, snapshot) {
@@ -356,8 +363,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 WordCard(
                                   card: currentCard,
-                                  onPlayAudio: () =>
-                                      _nativeAudioPlayer.play(currentCard.wordAudio),
+                                  onPlayAudio: () => _nativeAudioPlayer
+                                      .play(currentCard.wordAudio),
                                 ),
 
                                 //  Pitch Accent Display
@@ -368,29 +375,31 @@ class _HomeScreenState extends State<HomeScreen> {
                                     // The colored word
                                     Expanded(
                                       child: Html(
-                                        data: currentCard.pitch.split('</td></tr>').first
-                                            .replaceAll(RegExp(r'<table[^>]*>.*?<td>.*?</td><td>'), '<div class="pitch-box">')
-                                            + '</div>',
+                                        data: currentCard.pitch
+                                                .split('</td></tr>')
+                                                .first
+                                                .replaceAll(
+                                                    RegExp(
+                                                        r'<table[^>]*>.*?<td>.*?</td><td>'),
+                                                    '<div class="pitch-box">') +
+                                            '</div>',
                                         style: {
                                           // Default text is BLACK / SMALL (Low Pitch)
                                           ".pitch-box": Style(
                                               textAlign: TextAlign.center,
                                               fontSize: FontSize(22.0),
                                               fontWeight: FontWeight.normal,
-                                              color: Colors.black
-                                          ),
+                                              color: Colors.black),
                                           // accent_plain is the flat HIGH pitch plateau -> RED / BIG
                                           ".accent_plain": Style(
                                               color: Colors.red,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: FontSize(32.0)
-                                          ),
+                                              fontSize: FontSize(32.0)),
                                           // accent_top is the HIGH pitch peak before a drop -> RED / BIG
                                           ".accent_top": Style(
                                               color: Colors.red,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: FontSize(32.0)
-                                          ),
+                                              fontSize: FontSize(32.0)),
                                         },
                                       ),
                                     ),
@@ -401,22 +410,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                       triggerMode: TooltipTriggerMode.tap,
                                       showDuration: const Duration(seconds: 3),
                                       padding: const EdgeInsets.all(12),
-                                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                                      margin: const EdgeInsets.symmetric(
+                                          horizontal: 20),
                                       decoration: BoxDecoration(
                                         color: Colors.grey.shade900,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      textStyle: const TextStyle(color: Colors.white, fontSize: 14),
+                                      textStyle: const TextStyle(
+                                          color: Colors.white, fontSize: 14),
                                       message: "Pitch Accent Guide:\n"
-                                    "🔴 Red / Bold = High Pitch\n"
-                                    "⚫ Black / Small = Low Pitch\n\n"
-                                    "Common Patterns:\n"
-                                    "• Atamadaka (Head-High): 🔴⚫⚫ (Drops immediately)\n"
-                                    "• Heiban / Odaka: ⚫🔴🔴 (Starts low, stays high)\n"
-                                    "• Nakadaka (Mid-High): ⚫🔴⚫ (Goes up, then drops)",
+                                          "🔴 Red / Bold = High Pitch\n"
+                                          "⚫ Black / Small = Low Pitch\n\n"
+                                          "Common Patterns:\n"
+                                          "• Atamadaka (Head-High): 🔴⚫⚫ (Drops immediately)\n"
+                                          "• Heiban / Odaka: ⚫🔴🔴 (Starts low, stays high)\n"
+                                          "• Nakadaka (Mid-High): ⚫🔴⚫ (Goes up, then drops)",
                                       child: const Padding(
                                         padding: EdgeInsets.only(right: 20.0),
-                                        child: Icon(Icons.help_outline, color: Colors.grey, size: 24),
+                                        child: Icon(Icons.help_outline,
+                                            color: Colors.grey, size: 24),
                                       ),
                                     ),
                                   ],
@@ -435,17 +447,31 @@ class _HomeScreenState extends State<HomeScreen> {
                                     GestureDetector(
                                       onLongPress: _startRecording,
                                       onLongPressUp: _stopRecording,
-                                      onTap: () => _isRecording ? _stopRecording() : _startRecording(),
+                                      onTap: () => _isRecording
+                                          ? _stopRecording()
+                                          : _startRecording(),
                                       child: Container(
                                         padding: const EdgeInsets.all(15),
                                         decoration: BoxDecoration(
-                                          color: _isRecording ? Colors.red : Colors.white,
+                                          color: _isRecording
+                                              ? Colors.red
+                                              : Colors.white,
                                           shape: BoxShape.circle,
                                           boxShadow: [
-                                            BoxShadow(color: Colors.grey.withOpacity(0.3), blurRadius: 10)
+                                            BoxShadow(
+                                                color: Colors.grey
+                                                    .withOpacity(0.3),
+                                                blurRadius: 10)
                                           ],
                                         ),
-                                        child: Icon(_isRecording ? Icons.stop : Icons.mic, color: _isRecording ? Colors.white : tPrimaryColor, size: 30),
+                                        child: Icon(
+                                            _isRecording
+                                                ? Icons.stop
+                                                : Icons.mic,
+                                            color: _isRecording
+                                                ? Colors.white
+                                                : tPrimaryColor,
+                                            size: 30),
                                       ),
                                     ),
 
@@ -467,9 +493,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                           });
                                         }
                                       },
-                                      onDragEntered: (details) => setState(() => _isHoveringDropZone = true),
-                                      onDragExited: (details) => setState(() => _isHoveringDropZone = false),
-
+                                      onDragEntered: (details) => setState(
+                                          () => _isHoveringDropZone = true),
+                                      onDragExited: (details) => setState(
+                                          () => _isHoveringDropZone = false),
                                       child: InkWell(
                                         onTap: _pickFile,
                                         borderRadius: BorderRadius.circular(50),
@@ -477,12 +504,32 @@ class _HomeScreenState extends State<HomeScreen> {
                                           width: 60,
                                           height: 60,
                                           decoration: BoxDecoration(
-                                            color: _isHoveringDropZone ? Colors.blue.shade100 : (_droppedFile != null ? Colors.green.shade100 : Colors.white),
+                                            color: _isHoveringDropZone
+                                                ? Colors.blue.shade100
+                                                : (_droppedFile != null
+                                                    ? Colors.green.shade100
+                                                    : Colors.white),
                                             shape: BoxShape.circle,
-                                            border: _isHoveringDropZone ? Border.all(color: Colors.blue, width: 2) : null,
-                                            boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.3), blurRadius: 10)],
+                                            border: _isHoveringDropZone
+                                                ? Border.all(
+                                                    color: Colors.blue,
+                                                    width: 2)
+                                                : null,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                  color: Colors.grey
+                                                      .withOpacity(0.3),
+                                                  blurRadius: 10)
+                                            ],
                                           ),
-                                          child: Icon(_droppedFile != null ? Icons.check : Icons.upload, color: _droppedFile != null ? Colors.green : Colors.grey, size: 28),
+                                          child: Icon(
+                                              _droppedFile != null
+                                                  ? Icons.check
+                                                  : Icons.upload,
+                                              color: _droppedFile != null
+                                                  ? Colors.green
+                                                  : Colors.grey,
+                                              size: 28),
                                         ),
                                       ),
                                     ),
@@ -490,12 +537,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                     const SizedBox(width: 20),
 
                                     // Playback
-                                    if ((_userRecordingPath != null || _droppedFile != null) && !_isRecording)
+                                    if ((_userRecordingPath != null ||
+                                            _droppedFile != null) &&
+                                        !_isRecording)
                                       ElevatedButton.icon(
                                         onPressed: _playUserContent,
                                         icon: const Icon(Icons.play_arrow),
-
-                                        label: Text(_droppedFile != null ? "Play File" : "Play Rec"),
+                                        label: Text(_droppedFile != null
+                                            ? "Play File"
+                                            : "Play Rec"),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.grey[200],
                                           foregroundColor: Colors.black,
@@ -506,31 +556,55 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                 // Instructions
                                 if (_isRecording)
-                                  const Padding(padding: EdgeInsets.only(top: 10), child: Text("Recording...", style: TextStyle(color: Colors.red)))
+                                  const Padding(
+                                      padding: EdgeInsets.only(top: 10),
+                                      child: Text("Recording...",
+                                          style: TextStyle(color: Colors.red)))
                                 else if (_droppedFile != null)
-                                  Padding(padding: const EdgeInsets.only(top: 10), child: Text("Ready: ${_droppedFile!.name}", style: const TextStyle(color: Colors.green, fontSize: 12)))
+                                  Padding(
+                                      padding: const EdgeInsets.only(top: 10),
+                                      child: Text(
+                                          "Ready: ${_droppedFile!.name}",
+                                          style: const TextStyle(
+                                              color: Colors.green,
+                                              fontSize: 12)))
                                 else
-                                  const Padding(padding: EdgeInsets.only(top: 10), child: Text("Tap Mic or Upload Audio", style: TextStyle(color: Colors.grey, fontSize: 12))),
+                                  const Padding(
+                                      padding: EdgeInsets.only(top: 10),
+                                      child: Text("Tap Mic or Upload Audio",
+                                          style: TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12))),
 
                                 const SizedBox(height: 20),
 
                                 /*----------------- ANALYZE SECTION -----------------*/
-                                if ((_userRecordingPath != null || _droppedFile != null) && !_isRecording)
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 50, // Height to match the other buttons
-                                    child: ElevatedButton(
-                                      onPressed: _isAnalyzing ? null : () => _generateGraph(currentCard),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.purple,
-                                        foregroundColor: Colors.white,
-                                        // Same rounded rectangle shape
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                      ),
-                                      child: _isAnalyzing
-                                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                          : const Text("Analyze Pitch", style: TextStyle(fontSize: 18)),
+                                if ((_userRecordingPath != null ||
+                                        _droppedFile != null) &&
+                                    !_isRecording)
+                                  ElevatedButton(
+                                    onPressed: _isAnalyzing
+                                        ? null
+                                        : () => _generateGraph(currentCard),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.purple,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 40, vertical: 15),
+                                      // 👈 Horizontal padding for "fit content"
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10)),
                                     ),
+                                    child: _isAnalyzing
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                                color: Colors.white,
+                                                strokeWidth: 2))
+                                        : const Text("Analyze Pitch",
+                                            style: TextStyle(fontSize: 18)),
                                   ),
 
                                 const SizedBox(height: 20),
@@ -539,17 +613,33 @@ class _HomeScreenState extends State<HomeScreen> {
                                 if (_graphImage != null)
                                   Column(
                                     children: [
-                                      // Graph Image
                                       Container(
-                                        height: 400,
-                                        width: double.infinity,
+                                        // Dynamic height based on screen width
+                                        height:
+                                            MediaQuery.of(context).size.width >
+                                                    600
+                                                ? 550
+                                                : 400,
+                                        padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          border: Border.all(color: Colors.grey.shade300),
-                                          borderRadius: BorderRadius.circular(10),
                                           color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(15),
+                                          border: Border.all(
+                                              color: Colors.grey.shade300,
+                                              width: 1),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black
+                                                  .withOpacity(0.05),
+                                              blurRadius: 15,
+                                              spreadRadius: 5,
+                                            ),
+                                          ],
                                         ),
                                         child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius:
+                                              BorderRadius.circular(15),
                                           child: Image.memory(
                                             _graphImage!,
                                             fit: BoxFit.contain,
@@ -564,21 +654,24 @@ class _HomeScreenState extends State<HomeScreen> {
                                         children: [
                                           if (_combinedScore.isNotEmpty)
                                             Expanded(
-                                              child: _scoreBox("Combined", _combinedScore, Colors.green),
+                                              child: _scoreBox("Combined",
+                                                  _combinedScore, Colors.green),
                                             ),
-                                          if (_combinedScore.isNotEmpty && _aiScore.isNotEmpty)
+                                          if (_combinedScore.isNotEmpty &&
+                                              _aiScore.isNotEmpty)
                                             const SizedBox(width: 8),
-
                                           if (_aiScore.isNotEmpty)
                                             Expanded(
-                                              child: _scoreBox("AI Match", _aiScore, Colors.blue),
+                                              child: _scoreBox("AI Match",
+                                                  _aiScore, Colors.blue),
                                             ),
-                                          if (_aiScore.isNotEmpty && _dtwScore.isNotEmpty)
+                                          if (_aiScore.isNotEmpty &&
+                                              _dtwScore.isNotEmpty)
                                             const SizedBox(width: 8),
-
                                           if (_dtwScore.isNotEmpty)
                                             Expanded(
-                                              child: _scoreBox("OverLap", _dtwScore, Colors.orange),
+                                              child: _scoreBox("OverLap",
+                                                  _dtwScore, Colors.orange),
                                             ),
                                         ],
                                       ),
@@ -591,16 +684,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                         style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.blueAccent
-                                        ),
+                                            color: Colors.blueAccent),
                                       ),
                                       const SizedBox(height: 5),
                                       Text(
                                         _detectedKanji,
                                         style: const TextStyle(
                                             fontSize: 32, // Size
-                                            fontWeight: FontWeight.bold
-                                        ),
+                                            fontWeight: FontWeight.bold),
                                       ),
                                     ],
                                   ),
@@ -613,69 +704,67 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: tDefaultSize),
 
                       // --- NEXT BUTTON ---
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: () => _nextCard(cards.length),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: tPrimaryColor,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          child: const Text("Next Word", style: TextStyle(fontSize: 18, color: Colors.white)),
+                      ElevatedButton(
+                        onPressed: () => _nextCard(cards.length),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: tPrimaryColor,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 50, vertical: 15),
+                          // 👈 Centered, content-sized
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
+                        child: const Text("Next Word",
+                            style:
+                                TextStyle(fontSize: 18, color: Colors.white)),
                       ),
-
+                      // --- TRY AGAIN Pop Up ---
                       AnimatedSize(
                         duration: const Duration(milliseconds: 400),
-                        curve: Curves.easeOutBack, // Little bounce when sliding up
+                        curve: Curves.easeOutBack,
                         child: (_detectedRomaji.contains("Could not understand") || _detectedRomaji == "Error")
                             ? Padding(
                           padding: const EdgeInsets.only(top: 15),
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                // Clear the bad graph and immediately start recording again
-                                setState(() {
-                                  _graphImage = null;
-                                  _detectedRomaji = "";
-                                  _combinedScore = "";
-                                  _aiScore = "";
-                                  _dtwScore = "";
-                                });
-                                // call _startRecording() here directly, to be instant
-                                _startRecording();
-                              },
-                              icon: const Icon(Icons.refresh, color: Colors.white),
-                              label: const Text("Word not recognized - Try Again", style: TextStyle(fontSize: 18, color: Colors.white)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.redAccent,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _graphImage = null;
+                                _detectedRomaji = "";
+                                _combinedScore = "";
+                                _aiScore = "";
+                                _dtwScore = "";
+                              });
+                              _startRecording();
+                            },
+                            icon: const Icon(Icons.refresh, color: Colors.white),
+                            label: const Text("Word not recognized - Try Again", style: TextStyle(fontSize: 18, color: Colors.white)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15), // 👈 Padding instead of double.infinity
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
                           ),
                         )
-                            : const SizedBox.shrink(), // Takes up zero space when hidden
+                            : const SizedBox.shrink(),
                       ),
 
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 20),
 
                       // --- DEMO SECTION ---
                       const Divider(),
-                      const Text("Demo Mode", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const Text("Demo Mode",
+                          style: TextStyle(fontSize: 12, color: Colors.grey)),
                       const SizedBox(height: 10),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            _buildDemoButton("watashi_female.mp3", "Watashi (female)"),
+                            _buildDemoButton(
+                                "247_1_1_female.mp3", "kumikomu (female)"),
                             const SizedBox(width: 10),
-                            _buildDemoButton("watashi_male.mp3", "watashi (male)"),
-                            const SizedBox(width: 10),
-                            _buildDemoButton("watashi_wrong.mp3", "watashi (wrong pitch)"),
+                            _buildDemoButton(
+                                "247_1_1_male.mp3", "kumikomu (male)"),
                           ],
                         ),
                       ),
@@ -708,7 +797,8 @@ class _HomeScreenState extends State<HomeScreen> {
     String displayScore = score;
     // Logic to trim the long decimal if it's a raw number string
     if (double.tryParse(score.replaceAll('%', '')) != null) {
-      displayScore = "${double.parse(score.replaceAll('%', '')).toStringAsFixed(1)}%";
+      displayScore =
+          "${double.parse(score.replaceAll('%', '')).toStringAsFixed(1)}%";
     }
 
     return Container(
@@ -725,8 +815,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
                 fontSize: 12,
                 color: color.shade700,
-                fontWeight: FontWeight.bold
-            ),
+                fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
@@ -735,8 +824,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: color.shade900
-            ),
+                color: color.shade900),
             textAlign: TextAlign.center,
           ),
         ],
