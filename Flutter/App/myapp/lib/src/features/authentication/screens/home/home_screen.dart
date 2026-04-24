@@ -54,6 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _detectedKanji = "";
   String _detectedRomaji = "";
   String _aiScore = "";
+  String _combinedScore = "";
+  String _dtwScore = "";
   bool _isAnalyzing = false;
 
   /******************** CYCLE METHODS *******************/
@@ -114,6 +116,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _detectedKanji = "";
           _detectedRomaji = "";
           _aiScore = "";
+          _combinedScore = "";
+          _dtwScore = "";
         });
         print("File picked successfully: ${_droppedFile!.name}");
       }
@@ -130,6 +134,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _detectedKanji = "";
       _detectedRomaji = "";
       _aiScore = "";
+      _combinedScore = "";
+      _dtwScore = "";
     });
 
     try {
@@ -192,6 +198,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /******************** GRAPH & TEXT LOGIC *******************/
   Future<void> _generateGraph(AnkiCardModel currentCard) async {
+    // Fixed file name to avoid name errors
+    String fixedFileName = currentCard.wordAudio.replaceAll('\\', '＼');
+    print("FILENAME: $fixedFileName");
+
     // Validation
     if (_droppedFile == null && _userRecordingPath == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -206,13 +216,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _detectedKanji = "";
       _detectedRomaji = "";
       _aiScore = "";
+      _combinedScore = "";
+      _dtwScore = "";
     });
 
     // Call the controller (Returns PitchAnalysisResult object)
     final PitchAnalysisResult? result = await _pitchController.analyzeAudio(
       audioFile: _droppedFile,
       audioPath: _userRecordingPath,
-      nativeAudioPath: currentCard.wordAudio,
+        nativeAudioPath: 'assets/audio/$fixedFileName'
     );
     print("You scored: ${result?.aiScore}");
 
@@ -225,6 +237,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _detectedKanji = result.kanji;
         _detectedRomaji = result.romaji;
         _aiScore = result.aiScore;
+        _combinedScore = result.combinedScore;
+        _dtwScore = result.dtwScore;
 
         print("DETECTED WORDS $_detectedKanji $_detectedRomaji" );
       } else {
@@ -246,6 +260,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _detectedKanji = "";
       _detectedRomaji = "";
       _aiScore = "";
+      _combinedScore = "";
+      _dtwScore = "";
 
       if (_currentIndex < totalCards - 1) {
         _currentIndex++;
@@ -277,6 +293,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _detectedKanji = "";
         _detectedRomaji = "";
         _aiScore = "";
+        _combinedScore = "";
+        _dtwScore = "";
       });
 
       print("Demo file loaded: $fileName");
@@ -377,6 +395,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                             _detectedKanji = "";
                                             _detectedRomaji = "";
                                             _aiScore = "";
+                                            _combinedScore = "";
+                                            _dtwScore = "";
                                           });
                                         }
                                       },
@@ -469,6 +489,27 @@ class _HomeScreenState extends State<HomeScreen> {
                                       const SizedBox(height: 15),
 
                                       // --- NEW GREEN AI SCORE BOX ---
+                                      if (_combinedScore.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade50,
+                                            border: Border.all(color: Colors.green.shade400, width: 2),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            "AI Match Score: $_combinedScore",
+                                            style: TextStyle(
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green.shade700,
+                                            ),
+                                          ),
+                                        ),
+
+                                      if (_combinedScore.isNotEmpty) const SizedBox(height: 15),
+
+                                      // --- NEW Blue DTW SCORE BOX ---
                                       if (_aiScore.isNotEmpty)
                                         Container(
                                           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
@@ -490,6 +531,26 @@ class _HomeScreenState extends State<HomeScreen> {
                                       if (_aiScore.isNotEmpty) const SizedBox(height: 15),
                                       // ------------------------------
 
+                                      // --- NEW orange DTW SCORE BOX ---
+                                      if (_dtwScore.isNotEmpty)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade50,
+                                            border: Border.all(color: Colors.green.shade400, width: 2),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            "AI Match Score: $_dtwScore",
+                                            style: TextStyle(
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green.shade700,
+                                            ),
+                                          ),
+                                        ),
+
+                                      if (_dtwScore.isNotEmpty) const SizedBox(height: 15),
                                       // Transcription Text using google speech to text
                                       Text(
                                         "Detected: $_detectedRomaji",

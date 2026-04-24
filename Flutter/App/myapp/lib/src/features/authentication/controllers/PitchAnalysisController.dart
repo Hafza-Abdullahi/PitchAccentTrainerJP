@@ -107,17 +107,24 @@ class PitchAnalysisController {
       if (response.statusCode == 200) {
         String rawKanji = response.headers['x-transcription'] ?? "No Data";
         String rawRomaji = response.headers['x-transcription-romaji'] ?? "No Data";
+        String rawCombinedScore = response.headers['x-Combined-Score'] ?? "";
         String rawAiScore = response.headers['x-ai-score'] ?? "";
+        String rawDtwScore = response.headers['x-dtw-score'] ?? "";
+
 
         String decodedKanji = Uri.decodeComponent(rawKanji);
         String decodedRomaji = Uri.decodeComponent(rawRomaji);
         String decodedAiScore = Uri.decodeComponent(rawAiScore);
+        String decodedCombinedScore = Uri.decodeComponent(rawCombinedScore);
+        String decodedDtwScore = Uri.decodeComponent(rawDtwScore);
 
         return PitchAnalysisResult(
           imageBytes: response.bodyBytes,
           kanji: decodedKanji,
           romaji: decodedRomaji,
           aiScore: decodedAiScore,
+          dtwScore: decodedDtwScore,
+          combinedScore: decodedCombinedScore,
         );
       } else {
         print("Server Error: HTTP status code ${response.statusCode}");
@@ -136,11 +143,16 @@ class PitchAnalysisResult {
   final String kanji;
   final String romaji;
   final String aiScore;
+  final String dtwScore;
+  final String combinedScore;
+
 
   PitchAnalysisResult({
     required this.imageBytes,
     required this.kanji,
     required this.romaji,
     required this.aiScore,
+    required this.dtwScore,
+    required this.combinedScore,
   });
 }
