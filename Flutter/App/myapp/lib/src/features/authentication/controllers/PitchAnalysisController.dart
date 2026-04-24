@@ -23,7 +23,7 @@ class PitchAnalysisController {
     }
   }
 
-  Future<PitchAnalysisResult?> analyzeAudio({XFile? audioFile, String? audioPath, String? nativeAudioPath,}) async {
+  Future<PitchAnalysisResult?> analyzeAudio({XFile? audioFile, String? audioPath, required String? nativeAudioPath, required String targetRomaji,}) async {
     try {
       final Uri uri = Uri.parse(_apiUrl);
       final http.MultipartRequest request = http.MultipartRequest('POST', uri);
@@ -33,6 +33,10 @@ class PitchAnalysisController {
       print("audioPath: $audioPath");
       print("audioFile: $audioFile");
       print("nativeAudioPath: $nativeAudioPath");
+      print("targetRomaji: $targetRomaji");
+
+      // romaji for comparison later
+      request.fields['target_romaji'] = targetRomaji;
 
       // 1. Attach users recording
       if (kIsWeb) {
