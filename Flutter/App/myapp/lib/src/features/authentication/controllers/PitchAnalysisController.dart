@@ -107,7 +107,7 @@ class PitchAnalysisController {
       if (response.statusCode == 200) {
         String rawKanji = response.headers['x-transcription'] ?? "No Data";
         String rawRomaji = response.headers['x-transcription-romaji'] ?? "No Data";
-        String rawCombinedScore = response.headers['x-Combined-Score'] ?? "";
+        String rawCombinedScore = response.headers['x-combined-score'] ?? "";
         String rawAiScore = response.headers['x-ai-score'] ?? "";
         String rawDtwScore = response.headers['x-dtw-score'] ?? "";
 

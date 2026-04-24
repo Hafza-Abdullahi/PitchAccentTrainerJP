@@ -334,27 +334,36 @@ def process_audio():
         # TRIM DEAD AIR AND MIC CLICKS
         if temp_user_wav: trim_audio_file(temp_user_wav)
 
-        # THE SIAMESE AI GRADING BLOCK
+        # If google speech doesnt recognise the word, prompt to try again 
         ai_val = 0.0
+        dtw_val = 0.0
         final_combined_score = "0.0%"
-        if temp_user_wav and temp_native_wav:
-            # Get AI Score
+
+        if transcription == "Could not understand audio":
+            print("Static or silence detected")
+
+        else: # only grade if a word is heard
+        # THE SIAMESE AI GRADING BLOCK
             ai_val = 0.0
-            if siamese_model:
-                u_mat = prepare_audio_for_ai(temp_user_wav)
-                n_mat = prepare_audio_for_ai(temp_native_wav)
-                prediction = siamese_model.predict([n_mat, u_mat], verbose=0)
-                ai_val = float(prediction[0][0] * 100)
+            final_combined_score = "0.0%"
+            if temp_user_wav and temp_native_wav:
+                # Get AI Score
+                ai_val = 0.0
+                if siamese_model:
+                    u_mat = prepare_audio_for_ai(temp_user_wav)
+                    n_mat = prepare_audio_for_ai(temp_native_wav)
+                    prediction = siamese_model.predict([n_mat, u_mat], verbose=0)
+                    ai_val = float(prediction[0][0] * 100)
 
-            # Get DTW Score [cite: 612-618]
-            dtw_val = get_alignment_score(temp_native_wav, temp_user_wav)
+                # Get DTW Score [cite: 612-618]
+                dtw_val = get_alignment_score(temp_native_wav, temp_user_wav)
 
-            # Weighted Average: 60% DTW (Pattern) + 40% AI (Nuance)
-            total = (dtw_val * 0.6) + (ai_val * 0.4)
-            final_combined_score = f"{total:.1f}%"
-        
-        
-        print(f"Scores -> AI: {ai_val:.1f} | DTW: {dtw_val:.1f} | Final: {final_combined_score}", flush=True)
+                # Weighted Average: 60% DTW (Pattern) + 40% AI (Nuance)
+                total = (dtw_val * 0.6) + (ai_val * 0.4)
+                final_combined_score = f"{total:.1f}%"
+            
+            
+            print(f"Scores -> AI: {ai_val:.1f} | DTW: {dtw_val:.1f} | Final: {final_combined_score}", flush=True)
 
 
         # Generate the Matplotlib Graph

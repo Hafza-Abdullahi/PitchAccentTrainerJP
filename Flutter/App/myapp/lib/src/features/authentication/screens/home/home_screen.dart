@@ -552,6 +552,38 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.easeOutBack, // Little bounce when sliding up
+                        child: (_detectedRomaji.contains("Could not understand") || _detectedRomaji == "Error")
+                            ? Padding(
+                          padding: const EdgeInsets.only(top: 15),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                // Clear the bad graph and immediately start recording again
+                                setState(() {
+                                  _graphImage = null;
+                                  _detectedRomaji = "";
+                                  _combinedScore = "";
+                                  _aiScore = "";
+                                  _dtwScore = "";
+                                });
+                              },
+                              icon: const Icon(Icons.refresh, color: Colors.white),
+                              label: const Text("Word not recognized - Try Again", style: TextStyle(fontSize: 18, color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.redAccent,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ),
+                        )
+                            : const SizedBox.shrink(), // Takes up zero space when hidden
+                      ),
+
                       const SizedBox(height: 30),
 
                       // --- DEMO SECTION ---
