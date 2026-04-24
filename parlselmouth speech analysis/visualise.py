@@ -226,21 +226,20 @@ def health_check():
 @app.route("/process-audio", methods=["POST"])
    
 def process_audio():
-    if "files" not in request.files:
-        return jsonify({"error": "No audio files uploaded"}), 400
-
-    # Grab the audio file
-    user_file = request.files.getlist("files")[0]
-    native_file = request.files.get("native_audio") # The anki Audio
-    print("files recieved")
-
-    # Save audio temporarily for before and after conversion
+# Initialize all temp variables to None immediately
     temp_user_webm = None
     temp_user_wav = None
     temp_native_mp3 = None
-    temp_native_wav = None
+    temp_native_wav = None # <--- THIS PREVENTS THE "REFERENCED BEFORE ASSIGNMENT" ERROR
+
+    if "files" not in request.files:
+        return jsonify({"error": "No audio files"}), 400
 
     try:
+        
+        user_file = request.files.getlist("files")[0]
+        native_file = request.files.get("native_audio")
+
         # 1. Save and Convert User Audio
         suffix = os.path.splitext(user_file.filename)[1] or ".webm"
         t_user = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
@@ -309,33 +308,26 @@ def process_audio():
         if temp_native_wav: trim_audio_file(temp_native_wav)
 
         # THE SIAMESE AI GRADING BLOCK
-        ai_score_val = "N/A"
-        final_combined_score = "N/A"
-        if siamese_model and temp_native_wav and temp_user_wav:
-            try:
-                # Turn both audios into 128x100 pictures
-                user_matrix = prepare_audio_for_ai(temp_user_wav)
-                native_matrix = prepare_audio_for_ai(temp_native_wav)
-                
-                # Ask the twin brains to compare them
-                prediction = siamese_model.predict([native_matrix, user_matrix], verbose=0)
-                
-                # Convert the raw decimal to a percentage
-                confidence = prediction[0][0] * 100
-                ai_score_val = f"{confidence:.1f}%"
-                print(f"AI Match Score: {ai_score_val}")
-            except Exception as ai_err:
-                print(f"AI Grading Failed: {ai_err}")
-                ai_score_val = "0.0%"
+        ai_val = 0.0
+        final_combined_score = "0.0%"
+        if temp_user_wav and temp_native_wav:
+            # Get AI Score
+            ai_val = 0.0
+            if siamese_model:
+                u_mat = prepare_audio_for_ai(temp_user_wav)
+                n_mat = prepare_audio_for_ai(temp_native_wav)
+                prediction = siamese_model.predict([n_mat, u_mat], verbose=0)
+                ai_val = float(prediction[0][0] * 100)
 
-        # DTW Scroring as a backup or additional metric
-        dtw_score_val = get_alignment_score(temp_native_wav, temp_user_wav)
+            # Get DTW Score [cite: 612-618]
+            dtw_val = get_alignment_score(temp_native_wav, temp_user_wav)
 
-        # 60% weight to DTW (alignment) and 40% to AI (quality)
-        total_val = (dtw_score_val * 0.6) + (ai_score_val * 0.4)
-        final_combined_score = f"{total_val:.1f}%"
-        
-        print(f"Scores -> AI: {ai_score_val:.1f} | DTW: {dtw_score_val:.1f} | Final: {final_combined_score}")
+            # Weighted Average: 60% DTW (Pattern) + 40% AI (Nuance)
+            total = (dtw_val * 0.6) + (ai_val * 0.4)
+            final_combined_score = f"{total:.1f}%"
+
+            print(f"Scores -> AI: {ai_val:.1f} | DTW: {dtw_val:.1f} | Final: {final_combined_score}")
+
 
         # Generate the Matplotlib Graph
         combined_label = f"{romaji} : {transcription}"
