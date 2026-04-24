@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import savgol_filter
-from difflib import SequenceMatcher
+from difflib import SequenceMatcher # for string similarity scoring in the soft gatekeeper
 #flask and cors, send_file for images
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
@@ -348,8 +348,8 @@ def process_audio():
                 print(f"Soft Gatekeeper Similarity Match: {word_match_ratio * 100:.1f}%")
 
             if temp_user_wav and temp_native_wav:
-                # Did they fail the gatekeeper? (< 40% match)
-                if word_match_ratio < 0.4 and target_romaji != "":
+                # Did they fail the gatekeeper? (< 80% match)
+                if word_match_ratio < 0.8 and target_romaji != "":
                     print("Gatekeeper Failed: They said the wrong word. Grade dropped to 0%.")
                     total = 0.0
                     ai_val = 0.0
