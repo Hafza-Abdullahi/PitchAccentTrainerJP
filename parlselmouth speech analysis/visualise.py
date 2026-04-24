@@ -326,7 +326,10 @@ def process_audio():
             total = (dtw_val * 0.6) + (ai_val * 0.4)
             final_combined_score = f"{total:.1f}%"
 
-            print(f"Scores -> AI: {ai_val:.1f} | DTW: {dtw_val:.1f} | Final: {final_combined_score}")
+            # Change your print line to this:
+        
+        
+        print(f"Scores -> AI: {ai_val:.1f} | DTW: {dtw_val:.1f} | Final: {final_combined_score}", flush=True)
 
 
         # Generate the Matplotlib Graph
