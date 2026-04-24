@@ -230,7 +230,7 @@ def process_audio():
     temp_user_webm = None
     temp_user_wav = None
     temp_native_mp3 = None
-    temp_native_wav = None # <--- THIS PREVENTS THE "REFERENCED BEFORE ASSIGNMENT" ERROR
+    temp_native_wav = None
 
     if "files" not in request.files:
         return jsonify({"error": "No audio files"}), 400
